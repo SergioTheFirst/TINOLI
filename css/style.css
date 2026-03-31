@@ -6,22 +6,22 @@
 
 /* ===================== CSS VARIABLES ===================== */
 :root {
-  --bg-primary: #0d0a07;
-  --bg-secondary: #161008;
-  --bg-tertiary: #1a1209;
-  --bg-card: #1c150c;
+  --bg-primary: #080b1a;
+  --bg-secondary: #0d1127;
+  --bg-tertiary: #111633;
+  --bg-card: #131838;
   --gold: #c9a84c;
   --gold-light: #e8c878;
   --gold-dark: #8b6914;
   --gold-glow: rgba(201, 168, 76, 0.15);
   --gold-shimmer: linear-gradient(135deg, #8b6914 0%, #c9a84c 25%, #e8c878 50%, #c9a84c 75%, #8b6914 100%);
-  --text-primary: #f5efe6;
-  --text-secondary: #d4c9b5;
-  --text-muted: #9a8866;
-  --border: rgba(201, 168, 76, 0.2);
-  --border-hover: rgba(201, 168, 76, 0.5);
+  --text-primary: #eef0f8;
+  --text-secondary: #b8bdd4;
+  --text-muted: #7a82a6;
+  --border: rgba(201, 168, 76, 0.18);
+  --border-hover: rgba(201, 168, 76, 0.45);
   --shadow-gold: 0 0 30px rgba(201, 168, 76, 0.1);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.5);
   --radius: 2px;
   --transition: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-fast: 0.2s ease;
@@ -180,10 +180,10 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
 }
 
 .header.scrolled {
-  background: rgba(13, 10, 7, 0.95);
+  background: rgba(8, 11, 26, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 30px rgba(0, 0, 0, 0.6);
   border-bottom: 1px solid var(--border);
 }
 
@@ -299,9 +299,10 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(201, 168, 76, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 105, 20, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 50%, rgba(201, 168, 76, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(30, 40, 100, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, rgba(201, 168, 76, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(20, 25, 60, 0.4) 0%, transparent 70%),
     linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   z-index: 0;
 }
@@ -562,7 +563,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
   left: 0;
   right: 0;
   padding: 2rem 1.5rem;
-  background: linear-gradient(transparent, rgba(13, 10, 7, 0.9));
+  background: linear-gradient(transparent, rgba(8, 11, 26, 0.9));
   transform: translateY(20px);
   opacity: 0;
   transition: var(--transition);
@@ -955,7 +956,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
   text-align: center;
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(201, 168, 76, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(201, 168, 76, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 30%, rgba(20, 25, 60, 0.3) 0%, transparent 60%),
     var(--bg-primary);
 }
 
@@ -1022,7 +1024,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
     width: 80%;
     max-width: 350px;
     height: 100vh;
-    background: rgba(13, 10, 7, 0.98);
+    background: rgba(8, 11, 26, 0.98);
     backdrop-filter: blur(30px);
     flex-direction: column;
     justify-content: center;
