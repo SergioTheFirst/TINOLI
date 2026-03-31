@@ -269,6 +269,12 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             works_data['works'].append(new_work)
             write_json(WORKS_JSON, works_data)
 
+            # Auto-update config.json "updated" date
+            config = read_json(CONFIG_JSON)
+            if config and 'site' in config:
+                config['site']['updated'] = get_date()
+                write_json(CONFIG_JSON, config)
+
             self.log_message('Uploaded: %s (%s)', title, filename)
             self.send_json({'success': True, 'work': new_work})
 
@@ -283,6 +289,9 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             body = self.rfile.read(content_length)
             new_config = json.loads(body.decode('utf-8'))
 
+            # Auto-stamp the update date
+            if 'site' in new_config:
+                new_config['site']['updated'] = get_date()
             write_json(CONFIG_JSON, new_config)
             self.log_message('Config updated')
             self.send_json({'success': True})
