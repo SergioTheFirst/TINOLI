@@ -1,6 +1,6 @@
 {
   "site": {
-    "name": "Magic Stitch TEST MODE",
+    "name": "Broshio TEST MODE",
     "tagline": "Эксклюзивные украшения ручной работы  TEST MODE",
     "subtitle": "Каждое украшение — история, рассказанная бисером и нитью",
     "hero_button": "Смотреть работы",
@@ -26,7 +26,7 @@
     "vk": "magicstitch_TEST_TEST_TEST",
     "vk_url": "https://vk.com/TEST_TEST_TEST",
     "order_text": "Свяжитесь со мной любым удобным способом",
-    "order_note": "Отвечаю в течение 24 часов."
+    "order_note": "Отвечаю в течение 24 часов. "
   },
   "nav": {
     "home": "Главная",
@@ -58,7 +58,7 @@
     "branch": "main"
   },
   "seo": {
-    "title": "Magic Stitch — Эксклюзивные украшения ручной работы TEST_TEST_TEST",
+    "title": "Broshio — Эксклюзивные украшения ручной работы TEST_TEST_TEST",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа.",
     "keywords": "украшения ручной работы, бисер, броши из бисера, авторские украшения, handmade jewelry, Magic Stitch"
   }
