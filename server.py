@@ -310,6 +310,11 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             # Auto-stamp the update date
             if 'site' in new_config:
                 new_config['site']['updated'] = get_date()
+            # Never store tokens in config.json
+            if 'github' in new_config:
+                for key in list(new_config['github'].keys()):
+                    if 'token' in key.lower():
+                        new_config['github'][key] = ''
             write_json(CONFIG_JSON, new_config)
             self.log_message('Config updated')
             self.send_json({'success': True})
@@ -407,12 +412,22 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             repo = gh.get('repo', '')
             branch = gh.get('branch', 'main')
 
-            # If token was in config.json, migrate it to secrets.json
-            if gh.get('token', '') and not secrets.get('github_token', ''):
-                secrets['github_token'] = gh['token']
-                write_json(SECRETS_JSON, secrets)
+            # ALWAYS purge any token from config.json before upload
+            config_dirty = False
+            if gh.get('token', ''):
+                if not secrets.get('github_token', ''):
+                    secrets['github_token'] = gh['token']
+                    write_json(SECRETS_JSON, secrets)
+                    token = token or gh['token']
                 gh['token'] = ''
+                config_dirty = True
+            for key in list(gh.keys()):
+                if 'token' in key.lower() and gh[key]:
+                    gh[key] = ''
+                    config_dirty = True
+            if config_dirty:
                 write_json(CONFIG_JSON, config)
+                self.log_message('Cleaned token from config.json')
 
             if not token:
                 self.send_json({

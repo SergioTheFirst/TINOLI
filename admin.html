@@ -885,6 +885,8 @@
             sec.innerHTML = '<h3>' + (sectionNames[section] || section) + '</h3>';
 
             Object.keys(config[section]).forEach(function(key) {
+              // Never show token fields in config editor
+              if (key.toLowerCase().indexOf('token') !== -1) return;
               var value = config[section][key];
               var group = document.createElement('div');
               group.className = 'form-group';
