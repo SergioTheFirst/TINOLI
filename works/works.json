@@ -35,6 +35,33 @@
       "category": "earrings",
       "date": "2026-04-01",
       "filename_hover": "20260401_125743_hover.jpg"
+    },
+    {
+      "id": "20260401_130100",
+      "filename": "20260401_130100.jpg",
+      "title": "TEST_TEST_TEST еще раз",
+      "description": "TEST_TEST_TEST проверочка",
+      "category": "earrings",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_130100_hover.jpg"
+    },
+    {
+      "id": "20260401_130927",
+      "filename": "20260401_130927.jpg",
+      "title": "TEST_TEST_TEST3 проверка русский шрифт",
+      "description": "TEST_TEST_TEST3 проверка русский шрифт",
+      "category": "other",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_130927_hover.jpg"
+    },
+    {
+      "id": "20260401_131047",
+      "filename": "20260401_131047.jpg",
+      "title": "TEST_TEST_TEST3 проверка русский шрифт ENGLISFONT",
+      "description": "TEST_TEST_TEST3 проверка русский шрифт ENGLISFONT",
+      "category": "bracelet",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_131047_hover.jpg"
     }
   ]
 }
