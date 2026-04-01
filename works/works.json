@@ -8,6 +8,24 @@
       "category": "brooch",
       "date": "2026-04-01",
       "filename_hover": "20260401_120938_hover.jpg"
+    },
+    {
+      "id": "20260401_123634",
+      "filename": "20260401_123634.jpg",
+      "title": "ЖУЖА  тестовый режим 2",
+      "description": "проверка",
+      "category": "ring",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_123634_hover.png"
+    },
+    {
+      "id": "20260401_123723",
+      "filename": "20260401_123723.png",
+      "title": "РОБОКОП",
+      "description": "ПРОВЕРКА ДВАААА",
+      "category": "bracelet",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_123723_hover.png"
     }
   ]
 }
