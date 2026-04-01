@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 Magic Stitch - Local Development Server
-Python 3.10+ (compatible with 32-bit Windows 7/10)
+Python 3.8+ (compatible with 32-bit Windows 7/10/11)
 Only uses Python standard library - no pip install required.
+Publishes to GitHub via API - no git installation needed.
 
 Usage: python server.py
 """
@@ -16,12 +17,14 @@ import datetime
 import shutil
 import webbrowser
 import threading
-import cgi
 import io
-import subprocess
 import mimetypes
 import re
 import urllib.parse
+import urllib.request
+import base64
+import hashlib
+import time
 
 # ======================== CONFIGURATION ========================
 
@@ -347,65 +350,163 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({'error': str(e)}, 500)
 
     def handle_git_push(self):
-        """Handle git add, commit, push."""
+        """Publish site to GitHub via API (no git required)."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
             message = data.get('message', 'Update content')
 
+            config = read_json(CONFIG_JSON) or {}
+            gh = config.get('github', {})
+            token = gh.get('token', '')
+            owner = gh.get('owner', '')
+            repo = gh.get('repo', '')
+            branch = gh.get('branch', 'main')
+
+            if not token:
+                self.send_json({
+                    'success': False,
+                    'error': 'GitHub токен не указан. Откройте вкладку "Настройки" и заполните github.token',
+                    'log': 'Ошибка: пустой токен.\n\nКак получить токен:\n'
+                           '1. GitHub.com -> Settings -> Developer Settings\n'
+                           '2. Personal Access Tokens -> Tokens (classic)\n'
+                           '3. Generate New Token\n'
+                           '4. Галочка "repo" -> Generate\n'
+                           '5. Скопировать токен в настройки сайта (github.token)'
+                })
+                return
+
+            if not owner or not repo:
+                self.send_json({
+                    'success': False,
+                    'error': 'Не указан github.owner или github.repo в настройках'
+                })
+                return
+
             log_lines = []
+            log_lines.append('Публикация на GitHub: %s/%s (ветка: %s)' % (owner, repo, branch))
 
-            def run_git(cmd):
-                """Run a git command and capture output."""
-                full_cmd = 'git ' + cmd
-                log_lines.append('$ ' + full_cmd)
-                try:
-                    result = subprocess.run(
-                        full_cmd,
-                        shell=True,
-                        cwd=BASE_DIR,
-                        capture_output=True,
-                        text=True,
-                        timeout=30
-                    )
-                    output = (result.stdout + result.stderr).strip()
-                    if output:
-                        log_lines.append(output)
-                    return result.returncode == 0
-                except subprocess.TimeoutExpired:
-                    log_lines.append('Command timed out')
-                    return False
-                except Exception as e:
-                    log_lines.append('Error: ' + str(e))
-                    return False
+            # Collect all files to upload
+            files_to_upload = []
+            skip_dirs = {'.git', '__pycache__', '.venv', 'venv'}
+            skip_files = {'.gitignore'}
 
-            # Git operations
-            run_git('add -A')
-            run_git('commit -m "%s"' % message.replace('"', '\\"'))
+            for root, dirs, files in os.walk(BASE_DIR):
+                # Skip hidden and system dirs
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for fname in files:
+                    if fname in skip_files:
+                        continue
+                    full_path = os.path.join(root, fname)
+                    rel_path = os.path.relpath(full_path, BASE_DIR).replace('\\', '/')
+                    files_to_upload.append((rel_path, full_path))
 
-            # Try push with retry
-            push_ok = False
-            for attempt in range(4):
-                if run_git('push'):
-                    push_ok = True
-                    break
-                if attempt < 3:
-                    import time
-                    delay = 2 ** (attempt + 1)
-                    log_lines.append('Retrying in %ds...' % delay)
-                    time.sleep(delay)
+            log_lines.append('Найдено файлов: %d' % len(files_to_upload))
 
+            # Get current commit SHA of the branch
+            api_base = 'https://api.github.com/repos/%s/%s' % (owner, repo)
+
+            def github_api(method, url, data=None):
+                """Make a GitHub API request."""
+                req_body = json.dumps(data).encode('utf-8') if data else None
+                req = urllib.request.Request(url, data=req_body, method=method)
+                req.add_header('Authorization', 'token ' + token)
+                req.add_header('Accept', 'application/vnd.github.v3+json')
+                req.add_header('User-Agent', 'MagicStitch-Server')
+                if req_body:
+                    req.add_header('Content-Type', 'application/json')
+
+                for attempt in range(4):
+                    try:
+                        resp = urllib.request.urlopen(req, timeout=30)
+                        return json.loads(resp.read().decode('utf-8'))
+                    except urllib.error.HTTPError as e:
+                        err_body = e.read().decode('utf-8', errors='replace')
+                        if attempt < 3 and e.code in (502, 503, 504):
+                            delay = 2 ** (attempt + 1)
+                            log_lines.append('GitHub %d, повтор через %dс...' % (e.code, delay))
+                            time.sleep(delay)
+                            continue
+                        raise Exception('GitHub API %d: %s' % (e.code, err_body))
+                    except urllib.error.URLError as e:
+                        if attempt < 3:
+                            delay = 2 ** (attempt + 1)
+                            log_lines.append('Сетевая ошибка, повтор через %dс...' % delay)
+                            time.sleep(delay)
+                            continue
+                        raise Exception('Ошибка сети: %s' % str(e.reason))
+
+            # Step 1: Get the latest commit on the branch
+            log_lines.append('Получаем текущий коммит...')
+            ref_data = github_api('GET', '%s/git/ref/heads/%s' % (api_base, branch))
+            latest_sha = ref_data['object']['sha']
+            log_lines.append('Текущий коммит: %s' % latest_sha[:7])
+
+            # Step 2: Get the tree of the latest commit
+            commit_data = github_api('GET', '%s/git/commits/%s' % (api_base, latest_sha))
+            base_tree_sha = commit_data['tree']['sha']
+
+            # Step 3: Create blobs for each file
+            log_lines.append('Загружаем файлы...')
+            tree_items = []
+            uploaded = 0
+
+            for rel_path, full_path in files_to_upload:
+                # Read file content
+                with open(full_path, 'rb') as f:
+                    content_bytes = f.read()
+
+                # Create blob
+                b64_content = base64.b64encode(content_bytes).decode('ascii')
+                blob = github_api('POST', '%s/git/blobs' % api_base, {
+                    'content': b64_content,
+                    'encoding': 'base64'
+                })
+
+                tree_items.append({
+                    'path': rel_path,
+                    'mode': '100644',
+                    'type': 'blob',
+                    'sha': blob['sha']
+                })
+
+                uploaded += 1
+                if uploaded % 5 == 0:
+                    log_lines.append('  загружено: %d / %d' % (uploaded, len(files_to_upload)))
+
+            log_lines.append('Все файлы загружены: %d' % uploaded)
+
+            # Step 4: Create new tree
+            log_lines.append('Создаём дерево файлов...')
+            new_tree = github_api('POST', '%s/git/trees' % api_base, {
+                'tree': tree_items
+            })
+
+            # Step 5: Create new commit
+            log_lines.append('Создаём коммит...')
+            new_commit = github_api('POST', '%s/git/commits' % api_base, {
+                'message': message,
+                'tree': new_tree['sha'],
+                'parents': [latest_sha]
+            })
+            log_lines.append('Новый коммит: %s' % new_commit['sha'][:7])
+
+            # Step 6: Update branch reference
+            log_lines.append('Обновляем ветку...')
+            github_api('PATCH', '%s/git/refs/heads/%s' % (api_base, branch), {
+                'sha': new_commit['sha']
+            })
+
+            log_lines.append('')
+            log_lines.append('Опубликовано!')
             log_text = '\n'.join(log_lines)
 
-            if push_ok:
-                self.send_json({'success': True, 'log': log_text})
-            else:
-                self.send_json({'success': False, 'error': 'Push failed', 'log': log_text})
+            self.send_json({'success': True, 'log': log_text})
 
         except Exception as e:
-            self.log_message('Git push error: %s', str(e))
-            self.send_json({'error': str(e)}, 500)
+            self.log_message('GitHub push error: %s', str(e))
+            self.send_json({'error': str(e), 'log': '\n'.join(log_lines) if 'log_lines' in dir() else str(e)}, 500)
 
 
 def parse_multipart(body, boundary):
