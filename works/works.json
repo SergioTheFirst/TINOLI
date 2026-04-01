@@ -26,6 +26,15 @@
       "category": "bracelet",
       "date": "2026-04-01",
       "filename_hover": "20260401_123723_hover.png"
+    },
+    {
+      "id": "20260401_125743",
+      "filename": "20260401_125743.jpg",
+      "title": "TEST_TEST_TEST2",
+      "description": "TEST_TEST_TEST проверка",
+      "category": "earrings",
+      "date": "2026-04-01",
+      "filename_hover": "20260401_125743_hover.jpg"
     }
   ]
 }
