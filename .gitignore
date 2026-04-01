@@ -1,0 +1,9 @@
+secrets.json
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+build/
+dist/
+*.spec
+secrets.json.txt
