@@ -52,6 +52,12 @@
     "google_analytics_id": "",
     "cloudflare_token": ""
   },
+  "github": {
+    "owner": "SergioTheFirst",
+    "repo": "magicstitch",
+    "branch": "main",
+    "token": ""
+  },
   "seo": {
     "title": "Magic Stitch — Эксклюзивные украшения ручной работы",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа, индивидуальные заказы.",

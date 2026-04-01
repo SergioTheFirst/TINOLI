@@ -582,11 +582,22 @@
       <div class="card">
         <h2>Публикация на GitHub</h2>
         <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-          Отправьте все изменения на GitHub для публикации сайта.
+          Отправляет все файлы сайта на GitHub через API.<br>
+          Git не нужен — работает на любом компьютере с Python.
         </p>
 
+        <div style="padding: 1rem; border: 1px solid rgba(212, 168, 67, 0.3); border-radius: var(--radius); background: rgba(212, 168, 67, 0.05); margin-bottom: 1.5rem;">
+          <p style="color: var(--accent); font-size: 0.85rem; margin-bottom: 0.5rem; font-family: 'Cinzel', serif; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.65rem;">Как настроить (один раз)</p>
+          <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.8;">
+            <li>Откройте <a href="https://github.com/settings/tokens" style="color: var(--accent);">github.com/settings/tokens</a></li>
+            <li>Generate New Token (classic) &#8594; галочка <strong>repo</strong> &#8594; Generate</li>
+            <li>Скопируйте токен</li>
+            <li>Вкладка "Настройки" &#8594; поле <strong>github.token</strong> &#8594; вставьте токен &#8594; Сохранить</li>
+          </ol>
+        </div>
+
         <div class="form-group">
-          <label>Сообщение коммита</label>
+          <label>Сообщение (что изменилось)</label>
           <input type="text" id="commit-message" placeholder="Обновление сайта" value="Обновление контента">
         </div>
 
@@ -596,7 +607,7 @@
           </button>
         </div>
 
-        <div id="git-log" style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-input); border-radius: var(--radius); font-family: monospace; font-size: 0.8rem; color: var(--text-muted); display: none; white-space: pre-wrap;"></div>
+        <div id="git-log" style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-input); border-radius: var(--radius); font-family: monospace; font-size: 0.8rem; color: var(--text-muted); display: none; white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></div>
       </div>
     </div>
 
