@@ -15,7 +15,6 @@ import os
 import sys
 import datetime
 import shutil
-import webbrowser
 import threading
 import io
 import mimetypes
@@ -632,14 +631,6 @@ def main():
     print('')
     print('  Press Ctrl+C to stop')
     print('')
-
-    # Open browser after a short delay
-    def open_browser():
-        import time
-        time.sleep(1)
-        webbrowser.open(url)
-
-    threading.Thread(target=open_browser, daemon=True).start()
 
     try:
         server.serve_forever()
