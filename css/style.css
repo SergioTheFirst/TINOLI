@@ -6,22 +6,22 @@
 
 /* ===================== CSS VARIABLES ===================== */
 :root {
-  --bg-primary: #03050f;
-  --bg-secondary: #060a1c;
-  --bg-tertiary: #090e26;
-  --bg-card: #0c1230;
-  --gold: #d4a843;
-  --gold-light: #f0d070;
-  --gold-dark: #9a7418;
-  --gold-glow: rgba(212, 168, 67, 0.2);
-  --gold-shimmer: linear-gradient(135deg, #7a5a10 0%, #d4a843 25%, #f0d070 50%, #d4a843 75%, #7a5a10 100%);
-  --text-primary: #f4f6ff;
-  --text-secondary: #c8cde8;
-  --text-muted: #8892b8;
-  --border: rgba(212, 168, 67, 0.22);
-  --border-hover: rgba(212, 168, 67, 0.55);
-  --shadow-gold: 0 0 35px rgba(212, 168, 67, 0.14);
-  --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.65);
+  --bg-primary: #08030f;
+  --bg-secondary: #100520;
+  --bg-tertiary: #160828;
+  --bg-card: #1c0d35;
+  --gold: #e8bf50;
+  --gold-light: #fde888;
+  --gold-dark: #c49a30;
+  --gold-glow: rgba(232, 191, 80, 0.25);
+  --gold-shimmer: linear-gradient(135deg, #c49a30 0%, #e8bf50 25%, #fde888 50%, #e8bf50 75%, #c49a30 100%);
+  --text-primary: #ffffff;
+  --text-secondary: #e8e0f5;
+  --text-muted: #b8a8d8;
+  --border: rgba(232, 191, 80, 0.22);
+  --border-hover: rgba(232, 191, 80, 0.55);
+  --shadow-gold: 0 0 35px rgba(232, 191, 80, 0.18);
+  --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.7);
   --radius: 2px;
   --transition: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-fast: 0.2s ease;
@@ -299,10 +299,10 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(212, 168, 67, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 20%, rgba(15, 25, 80, 0.5) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(212, 168, 67, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 40%, rgba(10, 18, 60, 0.7) 0%, transparent 65%),
+    radial-gradient(ellipse at 20% 50%, rgba(180, 100, 255, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(100, 30, 180, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(232, 191, 80, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 40%, rgba(60, 10, 100, 0.6) 0%, transparent 65%),
     linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   z-index: 0;
 }
@@ -956,8 +956,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.6rem); }
   text-align: center;
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(201, 168, 76, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 30%, rgba(20, 25, 60, 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(180, 100, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 30%, rgba(60, 10, 100, 0.3) 0%, transparent 60%),
     var(--bg-primary);
 }
 

@@ -1,12 +1,12 @@
 {
   "site": {
     "name": "Broshio",
-    "tagline": "Эксклюзивные украшения ручной работы  TEST MODE",
-    "subtitle": "Каждое украшение — история, рассказанная бисером и нитью",
+    "tagline": "Авторские украшения ручной работы",
+    "subtitle": "Каждое украшение — маленькое произведение искусства",
     "hero_button": "Смотреть работы",
     "updated": "2026-04-01",
     "lang": "ru",
-    "url": "https://magicstitch.ru"
+    "url": "https://broshio.ru"
   },
   "about": {
     "title": "О мастере",
@@ -16,17 +16,17 @@
   },
   "contact": {
     "phone": "+7 (999) 123-45-67",
-    "instagram": "@TEST_TEST_TEST",
-    "instagram_url": "https://instagram.com/TEST_TEST_TEST",
-    "email": "PINK_FLOWER@MAIL.RU",
-    "telegram": "@TEST_TEST_TEST",
-    "telegram_url": "https://t.me/TEST_TEST_TEST",
-    "whatsapp": "+1234567890",
-    "whatsapp_url": "https://wa.me/1234567890",
-    "vk": "magicstitch_TEST_TEST_TEST",
-    "vk_url": "https://vk.com/TEST_TEST_TEST",
-    "order_text": "Свяжитесь со мной любым удобным способом",
-    "order_note": "Отвечаю в течение 24 часов. "
+    "instagram": "@broshio",
+    "instagram_url": "https://instagram.com/broshio",
+    "email": "hello@broshio.ru",
+    "telegram": "@broshio",
+    "telegram_url": "https://t.me/broshio",
+    "whatsapp": "+79991234567",
+    "whatsapp_url": "https://wa.me/79991234567",
+    "vk": "broshio",
+    "vk_url": "https://vk.com/broshio",
+    "order_text": "Напишите мне — я всегда рада общению",
+    "order_note": "Отвечаю в течение 24 часов."
   },
   "nav": {
     "home": "Главная",
@@ -35,7 +35,7 @@
     "contact": "Контакты"
   },
   "footer": {
-    "copyright": "© 2026 Magic Stitch. Все права защищены.",
+    "copyright": "© 2026 Broshio. Все права защищены.",
     "made_with": "Сделано с любовью к прекрасному"
   },
   "categories": {
@@ -58,8 +58,8 @@
     "branch": "main"
   },
   "seo": {
-    "title": "Broshio — Эксклюзивные украшения ручной работы TEST_TEST_TEST",
+    "title": "Broshio — Авторские украшения ручной работы",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа.",
-    "keywords": "украшения ручной работы, бисер, броши из бисера, авторские украшения, handmade jewelry, Broshio "
+    "keywords": "украшения ручной работы, бисер, броши, авторские украшения, handmade jewelry, Broshio"
   }
 }
