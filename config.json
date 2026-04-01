@@ -1,7 +1,7 @@
 {
   "site": {
-    "name": "Magic Stitch TESTTT MODE",
-    "tagline": "Эксклюзивные украшения ручной работы  TESTTT MODE",
+    "name": "Magic Stitch TEST MODE",
+    "tagline": "Эксклюзивные украшения ручной работы  TEST MODE",
     "subtitle": "Каждое украшение — история, рассказанная бисером и нитью",
     "hero_button": "Смотреть работы",
     "updated": "2026-04-01",
@@ -16,16 +16,16 @@
   },
   "contact": {
     "phone": "+7 (999) 123-45-67",
-    "instagram": "@magicstitch",
-    "instagram_url": "https://instagram.com/magicstitch",
-    "email": "hello@magicstitch.ru",
-    "telegram": "@magicstitch",
-    "telegram_url": "https://t.me/magicstitch",
-    "whatsapp": "+79991234567",
-    "whatsapp_url": "https://wa.me/79991234567",
-    "vk": "magicstitch",
-    "vk_url": "https://vk.com/magicstitch",
-    "order_text": "Для заказа свяжитесь со мной любым удобным способом",
+    "instagram": "@TEST_TEST_TEST",
+    "instagram_url": "https://instagram.com/TEST_TEST_TEST",
+    "email": "PINK_FLOWER@MAIL.RU",
+    "telegram": "@TEST_TEST_TEST",
+    "telegram_url": "https://t.me/TEST_TEST_TEST",
+    "whatsapp": "+1234567890",
+    "whatsapp_url": "https://wa.me/1234567890",
+    "vk": "magicstitch_TEST_TEST_TEST",
+    "vk_url": "https://vk.com/TEST_TEST_TEST",
+    "order_text": "Свяжитесь со мной любым удобным способом",
     "order_note": "Отвечаю в течение 24 часов. "
   },
   "nav": {
@@ -58,7 +58,7 @@
     "branch": "main"
   },
   "seo": {
-    "title": "Magic Stitch — Эксклюзивные украшения ручной работы",
+    "title": "Magic Stitch — Эксклюзивные украшения ручной работы TEST_TEST_TEST",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа.",
     "keywords": "украшения ручной работы, бисер, броши из бисера, авторские украшения, handmade jewelry, Magic Stitch"
   }
