@@ -586,13 +586,22 @@
           Git не нужен — работает на любом компьютере с Python.
         </p>
 
-        <div style="padding: 1rem; border: 1px solid rgba(212, 168, 67, 0.3); border-radius: var(--radius); background: rgba(212, 168, 67, 0.05); margin-bottom: 1.5rem;">
-          <p style="color: var(--accent); font-size: 0.85rem; margin-bottom: 0.5rem; font-family: 'Cinzel', serif; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.65rem;">Как настроить (один раз)</p>
-          <ol style="color: var(--text-muted); font-size: 0.85rem; padding-left: 1.2rem; line-height: 1.8;">
-            <li>Откройте <a href="https://github.com/settings/tokens" style="color: var(--accent);">github.com/settings/tokens</a></li>
+        <!-- Token setup -->
+        <div class="form-group">
+          <label>GitHub токен (хранится только локально, НЕ отправляется на GitHub)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx" style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: monospace; font-size: 0.9rem;">
+            <button type="button" class="btn" onclick="saveToken()" style="white-space: nowrap;">Сохранить токен</button>
+          </div>
+          <div id="token-status" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);"></div>
+        </div>
+
+        <div style="padding: 1rem; border: 1px solid rgba(212, 168, 67, 0.2); border-radius: var(--radius); background: rgba(212, 168, 67, 0.03); margin-bottom: 1.5rem;">
+          <p style="color: var(--accent); margin-bottom: 0.5rem; font-family: 'Cinzel', serif; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.6rem;">Как получить токен (один раз)</p>
+          <ol style="color: var(--text-muted); font-size: 0.8rem; padding-left: 1.2rem; line-height: 1.8;">
+            <li>Откройте <a href="https://github.com/settings/tokens" style="color: var(--accent);" target="_blank">github.com/settings/tokens</a></li>
             <li>Generate New Token (classic) &#8594; галочка <strong>repo</strong> &#8594; Generate</li>
-            <li>Скопируйте токен</li>
-            <li>Вкладка "Настройки" &#8594; поле <strong>github.token</strong> &#8594; вставьте токен &#8594; Сохранить</li>
+            <li>Скопируйте токен и вставьте в поле выше</li>
           </ol>
         </div>
 
@@ -938,6 +947,47 @@
         showMessage('Ошибка: ' + err.message, 'error');
       });
     });
+
+    // =================== TOKEN ===================
+    window.saveToken = function() {
+      var token = document.getElementById('github-token').value.trim();
+      if (!token) {
+        showMessage('Вставьте токен', 'error');
+        return;
+      }
+      fetch('/save-secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ github_token: token })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          showMessage('Токен сохранён!', 'success');
+          document.getElementById('github-token').value = '';
+          loadTokenStatus();
+        } else {
+          showMessage('Ошибка: ' + (data.error || ''), 'error');
+        }
+      });
+    };
+
+    function loadTokenStatus() {
+      fetch('/secrets-status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var el = document.getElementById('token-status');
+          if (data.has_token) {
+            el.innerHTML = '&#10003; Токен установлен (' + data.token_preview + ')';
+            el.style.color = '#81c784';
+          } else {
+            el.innerHTML = '&#10007; Токен не установлен';
+            el.style.color = '#e57373';
+          }
+        });
+    }
+
+    loadTokenStatus();
 
     // =================== GIT PUSH ===================
     window.gitPush = function() {

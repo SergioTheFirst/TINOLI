@@ -35,8 +35,12 @@ WORKS_DIR = os.path.join(BASE_DIR, 'works')
 IMAGES_DIR = os.path.join(WORKS_DIR, 'images')
 WORKS_JSON = os.path.join(WORKS_DIR, 'works.json')
 CONFIG_JSON = os.path.join(BASE_DIR, 'config.json')
+SECRETS_JSON = os.path.join(BASE_DIR, 'secrets.json')
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20 MB
+
+# Files that should never be uploaded to GitHub
+SKIP_FILES = {'secrets.json', '.gitignore', '.DS_Store', 'Thumbs.db'}
 
 # Ensure directories exist
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -162,6 +166,16 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             self.send_text(text, 'text/plain')
             return
 
+        # Secrets status (masked, for admin UI)
+        if path == '/secrets-status':
+            secrets = read_json(SECRETS_JSON) or {}
+            token = secrets.get('github_token', '')
+            self.send_json({
+                'has_token': bool(token),
+                'token_preview': token[:4] + '...' + token[-4:] if len(token) > 8 else ''
+            })
+            return
+
         # Default page
         if path == '/':
             self.path = '/index.html'
@@ -180,6 +194,8 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_save_config()
         elif path == '/delete-work':
             self.handle_delete_work()
+        elif path == '/save-secrets':
+            self.handle_save_secrets()
         elif path == '/git-push':
             self.handle_git_push()
         else:
@@ -349,6 +365,32 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             self.log_message('Delete error: %s', str(e))
             self.send_json({'error': str(e)}, 500)
 
+    def handle_save_secrets(self):
+        """Save secrets (GitHub token) to secrets.json — never uploaded to GitHub."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+
+            secrets = read_json(SECRETS_JSON) or {}
+            if 'github_token' in data:
+                secrets['github_token'] = data['github_token']
+
+            write_json(SECRETS_JSON, secrets)
+
+            # Remove token from config.json if it was there
+            config = read_json(CONFIG_JSON) or {}
+            if config.get('github', {}).get('token', ''):
+                config['github']['token'] = ''
+                write_json(CONFIG_JSON, config)
+
+            self.log_message('Secrets saved')
+            self.send_json({'success': True})
+
+        except Exception as e:
+            self.log_message('Save secrets error: %s', str(e))
+            self.send_json({'error': str(e)}, 500)
+
     def handle_git_push(self):
         """Publish site to GitHub via API (no git required)."""
         try:
@@ -358,22 +400,34 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             message = data.get('message', 'Update content')
 
             config = read_json(CONFIG_JSON) or {}
+            secrets = read_json(SECRETS_JSON) or {}
             gh = config.get('github', {})
-            token = gh.get('token', '')
+            # Token lives in secrets.json (never uploaded to GitHub)
+            token = secrets.get('github_token', '') or gh.get('token', '')
             owner = gh.get('owner', '')
             repo = gh.get('repo', '')
             branch = gh.get('branch', 'main')
 
+            # If token was in config.json, migrate it to secrets.json
+            if gh.get('token', '') and not secrets.get('github_token', ''):
+                secrets['github_token'] = gh['token']
+                write_json(SECRETS_JSON, secrets)
+                gh['token'] = ''
+                write_json(CONFIG_JSON, config)
+
             if not token:
                 self.send_json({
                     'success': False,
-                    'error': 'GitHub токен не указан. Откройте вкладку "Настройки" и заполните github.token',
-                    'log': 'Ошибка: пустой токен.\n\nКак получить токен:\n'
+                    'error': 'GitHub токен не указан',
+                    'log': 'Ошибка: токен не найден.\n\n'
+                           'Откройте в браузере: http://localhost:8000/admin.html\n'
+                           'Вкладка "Публикация" -> поле "GitHub токен" -> вставьте токен\n\n'
+                           'Как получить токен:\n'
                            '1. GitHub.com -> Settings -> Developer Settings\n'
                            '2. Personal Access Tokens -> Tokens (classic)\n'
                            '3. Generate New Token\n'
                            '4. Галочка "repo" -> Generate\n'
-                           '5. Скопировать токен в настройки сайта (github.token)'
+                           '5. Скопировать токен'
                 })
                 return
 
@@ -390,13 +444,12 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
             # Collect all files to upload
             files_to_upload = []
             skip_dirs = {'.git', '__pycache__', '.venv', 'venv'}
-            skip_files = {'.gitignore'}
 
             for root, dirs, files in os.walk(BASE_DIR):
                 # Skip hidden and system dirs
                 dirs[:] = [d for d in dirs if d not in skip_dirs]
                 for fname in files:
-                    if fname in skip_files:
+                    if fname in SKIP_FILES:
                         continue
                     full_path = os.path.join(root, fname)
                     rel_path = os.path.relpath(full_path, BASE_DIR).replace('\\', '/')
