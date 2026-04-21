@@ -1,12 +1,12 @@
 {
   "site": {
-    "name": "Broshio Тестовый режим ",
-    "tagline": "Авторские украшения ручной работы {Тестовый режим}",
+    "name": "TINOLI",
+    "tagline": "Авторские украшения ручной работы",
     "subtitle": "Каждое украшение — маленькое произведение искусства",
     "hero_button": "Смотреть работы",
-    "updated": "2026-04-15",
+    "updated": "2026-04-21",
     "lang": "ru",
-    "url": "https://broshio.ru"
+    "url": "https://tinoli.ru"
   },
   "about": {
     "title": "О мастере",
@@ -16,15 +16,15 @@
   },
   "contact": {
     "phone": "+7 (999) 123-45-67",
-    "instagram": "@broshio",
-    "instagram_url": "https://instagram.com/broshio",
-    "email": "hello@broshio.ru",
-    "telegram": "@broshio",
-    "telegram_url": "https://t.me/broshio",
+    "instagram": "@tinoli",
+    "instagram_url": "https://instagram.com/tinoli",
+    "email": "hello@tinoli.ru",
+    "telegram": "@tinoli",
+    "telegram_url": "https://t.me/tinoli",
     "whatsapp": "+79991234567",
     "whatsapp_url": "https://wa.me/79991234567",
-    "vk": "broshio",
-    "vk_url": "https://vk.com/broshio",
+    "vk": "tinoli",
+    "vk_url": "https://vk.com/tinoli",
     "order_text": "Напишите мне — я всегда рада общению",
     "order_note": "Отвечаю в течение 24 часов."
   },
@@ -35,7 +35,7 @@
     "contact": "Контакты"
   },
   "footer": {
-    "copyright": "© 2026 Broshio. Все права защищены.",
+    "copyright": "© 2026 TINOLI. Все права защищены.",
     "made_with": "Сделано с любовью к прекрасному"
   },
   "categories": {
@@ -54,12 +54,12 @@
   },
   "github": {
     "owner": "SergioTheFirst",
-    "repo": "magicstitch",
+    "repo": "TINOLI",
     "branch": "main"
   },
   "seo": {
-    "title": "Broshio — Авторские украшения ручной работы",
+    "title": "TINOLI — Авторские украшения ручной работы",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа.",
-    "keywords": "украшения ручной работы, бисер, броши, авторские украшения, handmade jewelry, Broshio"
+    "keywords": "украшения ручной работы, бисер, броши, авторские украшения, handmade jewelry, TINOLI"
   }
 }
