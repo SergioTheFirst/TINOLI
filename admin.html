@@ -3,38 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Панель управления — Broshio</title>
+  <title>TINOLI — Admin Panel</title>
   <meta name="robots" content="noindex, nofollow">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400;1,700&family=Cormorant:wght@300;400;500&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg: #1a1a2e;
-      --bg-card: #16213e;
-      --bg-input: #0f1629;
-      --accent: #c9a84c;
-      --accent-light: #e8c878;
-      --accent-dark: #8b6914;
-      --text: #e0e0e0;
-      --text-muted: #8888aa;
-      --border: #2a2a4a;
+      --bg: #09040f;
+      --bg-card: #0d0518;
+      --bg-input: #050208;
+      --accent: #e8bf50;
+      --text: #ffffff;
+      --text-muted: #c0aee0;
+      --border: #2d1a4a;
       --success: #4caf50;
       --error: #f44336;
-      --radius: 6px;
+      --radius: 2px;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Cormorant', serif;
+      font-family: 'JetBrains Mono', monospace;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.5;
       min-height: 100vh;
+      font-size: 15px;
     }
 
     /* Admin Header */
@@ -51,10 +50,12 @@
     }
 
     .admin-header h1 {
-      font-family: 'Great Vibes', cursive;
+      font-family: 'Cinzel', serif;
       color: var(--accent);
-      font-size: 1.8rem;
-      font-weight: 400;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
     }
 
     .admin-header .links {
@@ -138,13 +139,15 @@
     }
 
     .card h2 {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
+      font-family: 'Cinzel', serif;
       color: var(--accent);
-      font-size: 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       margin-bottom: 1.5rem;
       padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 2px solid var(--accent);
     }
 
     /* Form elements */
@@ -168,14 +171,14 @@
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 0.75rem 1rem;
+      padding: 0.7rem 1rem;
       background: var(--bg-input);
-      border: 1px solid var(--border);
+      border: 1px solid var(--accent);
       border-radius: var(--radius);
       color: var(--text);
-      font-family: 'Cormorant', serif;
-      font-size: 1rem;
-      transition: 0.3s;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      transition: 0.2s;
     }
 
     .form-group input:focus,
@@ -183,7 +186,7 @@
     .form-group select:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 10px rgba(201, 168, 76, 0.1);
+      box-shadow: 0 0 0 2px rgba(232, 191, 80, 0.2);
     }
 
     .form-group textarea {
@@ -203,19 +206,20 @@
 
     /* File upload */
     .upload-zone {
-      border: 2px dashed var(--border);
+      border: 2px dashed var(--accent);
       border-radius: var(--radius);
-      padding: 3rem 2rem;
+      padding: 2.5rem 2rem;
       text-align: center;
       cursor: pointer;
-      transition: 0.3s;
+      transition: 0.2s;
       position: relative;
+      background: rgba(232, 191, 80, 0.05);
     }
 
     .upload-zone:hover,
     .upload-zone.dragover {
       border-color: var(--accent);
-      background: rgba(201, 168, 76, 0.03);
+      background: rgba(232, 191, 80, 0.1);
     }
 
     .upload-zone input[type="file"] {
@@ -229,20 +233,20 @@
     }
 
     .upload-zone .upload-icon {
-      font-size: 2.5rem;
-      color: var(--accent-dark);
+      font-size: 2rem;
+      color: var(--accent);
       margin-bottom: 0.5rem;
     }
 
     .upload-zone p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
     }
 
     .upload-zone .formats {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      opacity: 0.6;
       margin-top: 0.5rem;
     }
 
@@ -302,14 +306,15 @@
     .btn {
       font-family: 'Cinzel', serif;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
-      font-size: 0.7rem;
-      padding: 0.8rem 2.5rem;
-      border: 1px solid var(--accent);
+      letter-spacing: 0.1em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.7rem 1.5rem;
+      border: 2px solid var(--accent);
       color: var(--accent);
       background: transparent;
       cursor: pointer;
-      transition: 0.3s;
+      transition: 0.2s;
       border-radius: var(--radius);
     }
 
@@ -406,10 +411,12 @@
     }
 
     .work-item-info h3 {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
+      font-family: 'Cinzel', serif;
       color: var(--text);
-      font-size: 1.1rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .work-item-info p {
@@ -433,13 +440,15 @@
     }
 
     .config-section h3 {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
+      font-family: 'Cinzel', serif;
       color: var(--accent);
-      font-size: 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       margin-bottom: 1rem;
       padding-bottom: 0.5rem;
-      border-bottom: 1px solid rgba(42, 42, 74, 0.5);
+      border-bottom: 1px solid var(--accent);
     }
 
     /* Git push section */
@@ -452,8 +461,11 @@
     }
 
     .git-section h3 {
-      font-family: 'Cormorant Garamond', serif;
+      font-family: 'Cinzel', serif;
       color: var(--accent);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       margin-bottom: 1rem;
     }
 
@@ -471,7 +483,7 @@
 
   <!-- Admin Header -->
   <div class="admin-header">
-    <h1>Broshio — Admin</h1>
+    <h1>TINOLI — Admin</h1>
     <div class="links">
       <a href="index.html">Перейти на сайт</a>
       <a href="gallery.html">Галерея</a>
@@ -587,16 +599,16 @@
             <div style="color:var(--text); font-size:0.9rem;">Нажать кнопку</div>
             <div style="color:var(--text-muted); font-size:0.75rem;">файлы уходят на GitHub</div>
           </div>
-          <div style="display:flex; align-items:center; color:var(--accent-dark); font-size:1.2rem;">&#8594;</div>
+          <div style="display:flex; align-items:center; color:var(--accent); font-size:1.2rem;">→</div>
           <div style="flex:1; text-align:center; padding:0.5rem;">
             <div style="font-family:'Cinzel',serif; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:0.3rem;">Шаг 2</div>
             <div style="color:var(--text); font-size:0.9rem;">~1 минута</div>
             <div style="color:var(--text-muted); font-size:0.75rem;">Cloudflare деплоит сайт</div>
           </div>
-          <div style="display:flex; align-items:center; color:var(--accent-dark); font-size:1.2rem;">&#8594;</div>
+          <div style="display:flex; align-items:center; color:var(--accent); font-size:1.2rem;">→</div>
           <div style="flex:1; text-align:center; padding:0.5rem;">
             <div style="font-family:'Cinzel',serif; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent); margin-bottom:0.3rem;">Шаг 3</div>
-            <div style="color:var(--text); font-size:0.9rem;">broshio.ru</div>
+            <div style="color:var(--text); font-size:0.9rem;">tinoli.ru</div>
             <div style="color:var(--text-muted); font-size:0.75rem;">сайт обновлён ✓</div>
           </div>
         </div>
