@@ -4,7 +4,7 @@
     "tagline": "Авторские украшения ручной работы",
     "subtitle": "There Is No Other Like It",
     "hero_button": "Смотреть работы",
-    "updated": "2026-04-21",
+    "updated": "2026-04-26",
     "lang": "ru",
     "url": "https://tinoli.ru"
   },
@@ -23,7 +23,7 @@
     "telegram_url": "https://t.me/MasterTinoli",
     "whatsapp": "+7",
     "whatsapp_url": "https://",
-    "vk": "T.I.N.O.L.I",
+    "vk": "T.I.N.O.L.I.",
     "vk_url": "https://vk.com/",
     "order_text": "Напишите мне — я всегда рада общению",
     "order_note": "Отвечаю в течение 24 часов."
@@ -48,7 +48,7 @@
     "other": "Другое"
   },
   "analytics": {
-    "yandex_metrika_id": "",
+    "yandex_metrika_id": "104158547",
     "google_analytics_id": "",
     "cloudflare_token": ""
   },
