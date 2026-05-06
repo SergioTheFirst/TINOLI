@@ -2,9 +2,9 @@
   "site": {
     "name": "TINOLI",
     "tagline": "Авторские украшения ручной работы",
-    "subtitle": "There Is No Other Like It",
+    "subtitle": "Каждое украшение — маленькое произведение искусства",
     "hero_button": "Смотреть работы",
-    "updated": "2026-04-26",
+    "updated": "2026-04-21",
     "lang": "ru",
     "url": "https://tinoli.ru"
   },
@@ -15,16 +15,16 @@
     "quote": "Каждое украшение начинается с вдохновения и заканчивается восхищением"
   },
   "contact": {
-    "phone": "+7",
-    "instagram": "@",
-    "instagram_url": "https://",
-    "email": "master@tinoli.ru",
-    "telegram": "@MasterTinoli",
-    "telegram_url": "https://t.me/MasterTinoli",
-    "whatsapp": "+7",
-    "whatsapp_url": "https://",
-    "vk": "T.I.N.O.L.I.",
-    "vk_url": "https://vk.com/",
+    "phone": "+7 (999) 123-45-67",
+    "instagram": "@tinoli",
+    "instagram_url": "https://instagram.com/tinoli",
+    "email": "hello@tinoli.ru",
+    "telegram": "@tinoli",
+    "telegram_url": "https://t.me/tinoli",
+    "whatsapp": "+79991234567",
+    "whatsapp_url": "https://wa.me/79991234567",
+    "vk": "tinoli",
+    "vk_url": "https://vk.com/tinoli",
     "order_text": "Напишите мне — я всегда рада общению",
     "order_note": "Отвечаю в течение 24 часов."
   },
@@ -48,7 +48,7 @@
     "other": "Другое"
   },
   "analytics": {
-    "yandex_metrika_id": "104158547",
+    "yandex_metrika_id": "",
     "google_analytics_id": "",
     "cloudflare_token": ""
   },
