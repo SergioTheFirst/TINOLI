@@ -80,6 +80,15 @@
       "category": "earrings",
       "date": "2026-05-06",
       "filename_hover": "20260506_155155_hover.jpg"
+    },
+    {
+      "id": "20260506_190522",
+      "filename": "20260506_190522.jpg",
+      "title": "фунтик",
+      "description": "тесттт",
+      "category": "other",
+      "date": "2026-05-06",
+      "filename_hover": "20260506_190522_hover.jpg"
     }
   ]
 }
