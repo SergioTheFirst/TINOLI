@@ -559,7 +559,7 @@
           </div>
 
           <div class="btn-group">
-            <button type="submit" class="btn">Опубликовать</button>
+            <button type="submit" class="btn">Сохранить работу</button>
           </div>
         </form>
       </div>
@@ -880,7 +880,7 @@
 
       var submitBtn = e.target.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Загрузка...';
+      submitBtn.textContent = 'Сохранение...';
 
       fetch('/upload', {
         method: 'POST',
@@ -889,7 +889,7 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.success) {
-          showMessage('Работа добавлена на сайт!', 'success');
+          showMessage('Работа сохранена локально! Чтобы появилась на сайте, опубликуйте на GitHub.', 'success');
           // Reset form
           document.getElementById('upload-form').reset();
           mainFile = null;
@@ -904,7 +904,7 @@
       })
       .finally(function() {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Опубликовать';
+        submitBtn.textContent = 'Сохранить работу';
       });
     });
 

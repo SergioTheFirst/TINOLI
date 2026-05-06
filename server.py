@@ -544,9 +544,10 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
 
             log_lines.append('Все файлы загружены: %d' % uploaded)
 
-            # Step 4: Create new tree
+            # Step 4: Create new tree (base_tree preserves existing repo files)
             log_lines.append('Создаём дерево файлов...')
             new_tree = github_api('POST', '%s/git/trees' % api_base, {
+                'base_tree': base_tree_sha,
                 'tree': tree_items
             })
 
@@ -573,7 +574,7 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
 
         except Exception as e:
             self.log_message('GitHub push error: %s', str(e))
-            self.send_json({'error': str(e), 'log': '\n'.join(log_lines) if 'log_lines' in dir() else str(e)}, 500)
+            self.send_json({'success': False, 'error': str(e), 'log': '\n'.join(log_lines) if 'log_lines' in dir() else str(e)}, 500)
 
 
 def parse_multipart(body, boundary):
