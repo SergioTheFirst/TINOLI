@@ -80,6 +80,14 @@
       "category": "other",
       "date": "2026-05-06",
       "filename_hover": "20260506_133734_hover.jpg"
+    },
+    {
+      "id": "20260506_143315",
+      "filename": "20260506_143315.png",
+      "title": "Test Upload From Script",
+      "description": "Testing upload and push pipeline",
+      "category": "brooch",
+      "date": "2026-05-06"
     }
   ]
 }
