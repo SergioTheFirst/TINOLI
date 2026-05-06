@@ -121,11 +121,12 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=BASE_DIR, **kwargs)
 
     def log_message(self, format, *args):
-        """Custom log format."""
-        sys.stderr.write("[%s] %s\n" % (
+        """Custom log format — always flushed to console."""
+        msg = "[%s] %s" % (
             datetime.datetime.now().strftime('%H:%M:%S'),
             format % args
-        ))
+        )
+        print(msg, flush=True)
 
     def send_json(self, data, status=200):
         """Send a JSON response."""
@@ -148,6 +149,7 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET requests."""
+        self.log_message('GET %s', self.path)
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -184,6 +186,7 @@ class MagicStitchHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         """Handle POST requests."""
+        self.log_message('POST %s', self.path)
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -631,27 +634,27 @@ def main():
 
     # Ensure config.json exists
     if not os.path.exists(CONFIG_JSON):
-        print('Warning: config.json not found!')
+        print('Warning: config.json not found!', flush=True)
 
     server = http.server.HTTPServer((HOST, PORT), MagicStitchHandler)
     url = 'http://localhost:%d' % PORT
 
-    print('')
-    print('  ====================================')
-    print('       Magic Stitch Server')
-    print('  ====================================')
-    print('')
-    print('  Site:    %s' % url)
-    print('  Admin:   %s/admin.html' % url)
-    print('  Dir:     %s' % BASE_DIR)
-    print('')
-    print('  Press Ctrl+C to stop')
-    print('')
+    print('', flush=True)
+    print('  ====================================', flush=True)
+    print('       Magic Stitch Server', flush=True)
+    print('  ====================================', flush=True)
+    print('', flush=True)
+    print('  Site:    %s' % url, flush=True)
+    print('  Admin:   %s/admin.html' % url, flush=True)
+    print('  Dir:     %s' % BASE_DIR, flush=True)
+    print('', flush=True)
+    print('  Press Ctrl+C to stop', flush=True)
+    print('', flush=True)
 
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print('\n  Server stopped.')
+        print('\n  Server stopped.', flush=True)
         server.server_close()
 
 
