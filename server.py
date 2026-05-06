@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-TINOLI - Local Development Server
+Magic Stitch - Local Development Server
 Python 3.8+ (compatible with 32-bit Windows 7/10/11)
 Only uses Python standard library - no pip install required.
 Publishes to GitHub via API - no git installation needed.
@@ -637,7 +637,7 @@ def main():
 
     print('')
     print('  ====================================')
-    print('       TINOLI Server')
+    print('       Magic Stitch Server')
     print('  ====================================')
     print('')
     print('  Site:    %s' % url)

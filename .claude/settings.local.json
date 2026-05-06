@@ -15,7 +15,8 @@
       "Bash(git rebase *)",
       "Bash(python server.py)",
       "Bash(curl -s http://localhost:8000/)",
-      "Bash(python test_compression.py)"
+      "Bash(python test_compression.py)",
+      "Bash(python test_3mb_limit.py)"
     ]
   }
 }
