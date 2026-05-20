@@ -1,0 +1,17 @@
+# Local dev files — NOT for production
+*.py
+*.bat
+__pycache__/
+*.pyc
+*.pyo
+
+# Admin panel — local only
+admin.html
+
+# Secrets
+secrets.json
+secrets.json.txt
+
+# System
+.DS_Store
+Thumbs.db
