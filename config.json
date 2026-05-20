@@ -2,7 +2,7 @@
   "site": {
     "name": "TINOLI",
     "tagline": "Авторские украшения ручной работы",
-    "subtitle": "Каждое украшение — маленькое произведение искусства",
+    "subtitle": "There Is No Other Like It",
     "hero_button": "Смотреть работы",
     "updated": "2026-05-06",
     "lang": "ru",
@@ -15,16 +15,16 @@
     "quote": "Каждое украшение начинается с вдохновения и заканчивается восхищением"
   },
   "contact": {
-    "phone": "+7 (999) 123-45-67",
+    "phone": "+7 ",
     "instagram": "@tinoli",
-    "instagram_url": "https://instagram.com/tinoli",
-    "email": "hello@tinoli.ru",
-    "telegram": "@tinoli",
-    "telegram_url": "https://t.me/tinoli",
-    "whatsapp": "+79991234567",
-    "whatsapp_url": "https://wa.me/79991234567",
+    "instagram_url": "https://instagram.com/",
+    "email": "master@tinoli.ru",
+    "telegram": "@MasterTinoli",
+    "telegram_url": "",
+    "whatsapp": "+7...",
+    "whatsapp_url": "https://wa.me/",
     "vk": "tinoli",
-    "vk_url": "https://vk.com/tinoli",
+    "vk_url": "https://vk.com/",
     "order_text": "Напишите мне — я всегда рада общению",
     "order_note": "Отвечаю в течение 24 часов."
   },
@@ -48,7 +48,7 @@
     "other": "Другое"
   },
   "analytics": {
-    "yandex_metrika_id": "",
+    "yandex_metrika_id": "104158547",
     "google_analytics_id": "",
     "cloudflare_token": ""
   },
@@ -58,7 +58,7 @@
     "branch": "main"
   },
   "seo": {
-    "title": "TINOLI — Авторские украшения ручной работы",
+    "title": "TINOLI — There Is No Other Like It",
     "description": "Авторские украшения из бисера, натуральных камней и страз. Броши, серьги, браслеты, колье. Ручная работа.",
     "keywords": "украшения ручной работы, бисер, броши, авторские украшения, handmade jewelry, TINOLI"
   }
