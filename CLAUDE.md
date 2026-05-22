@@ -50,6 +50,34 @@
 - `server.py` locally blocks `.py`/`.bat`/`secrets.json` via 404, API restricted to localhost only
 - `robots.txt` added: allows all, blocks `/admin.html`, points to sitemap
 
+## Session Log (2026-05-22)
+
+### What was done this session
+1. **Fixed `server.bat`** — added `cd /d "%~dp0"` so it works from any folder
+2. **Fixed broken `server.py`** — restored `handle_delete_work` after PowerShell insert overwrote it; added `POST /update-work` endpoint for editing works
+3. **Fixed `admin.html`** — added `.catch()` on fetch, exposed `window.showMessage` / `window.loadWorksList` for `admin-edit.js`
+4. **Created `js/admin-edit.js`** — edit-work modal: `switchToDeploy()`, `editWork()`, `saveEdit()`, `closeEditModal()`
+5. **Synced user data** — `config.json` (cloudflare token), `works/works.json` (2 new works from admin panel)
+6. **Updated this file** — documented all features and architecture
+
+### Why `server.py` is NOT on GitHub
+- `server.py`, `admin.html`, `*.bat`, `secrets.json` are **intentionally gitignored** (security hardening from 2025-05-20)
+- These are **local-only dev tools**, not for public hosting
+- The public site is **static HTML/CSS/JS** served by GitHub Pages — no Python server needed in production
+- `server.py` runs only on your local machine (`localhost:8000`) to manage content before publishing
+
+### Files on GitHub vs Local Only
+| File | On GitHub | Local Only | Reason |
+|------|-----------|------------|--------|
+| `index.html`, `css/`, `js/` | ✅ Yes | ✅ Yes | Public site |
+| `config.json`, `works/` | ✅ Yes | ✅ Yes | Content & config |
+| `robots.txt` | ✅ Yes | ✅ Yes | SEO |
+| `CLAUDE.md` | ✅ Yes | ✅ Yes | Project memory |
+| `server.py` | ❌ No | ✅ Yes | `.gitignore` — security |
+| `admin.html` | ❌ No | ✅ Yes | `.gitignore` — security |
+| `server.bat` | ❌ No | ✅ Yes | `.gitignore` — security |
+| `secrets.json` | ❌ No | ✅ Yes | `.gitignore` — tokens |
+
 ## Alert: GitHub Pages Down
 
 - `https://tinoli.ru` returns 404 — GitHub Pages is NOT enabled for this repo
