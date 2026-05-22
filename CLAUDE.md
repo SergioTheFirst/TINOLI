@@ -59,6 +59,7 @@
 4. **Created `js/admin-edit.js`** — edit-work modal: `switchToDeploy()`, `editWork()`, `saveEdit()`, `closeEditModal()`
 5. **Synced user data** — `config.json` (cloudflare token), `works/works.json` (2 new works from admin panel)
 6. **Updated this file** — documented all features and architecture
+7. **Rewrote `README.md`** — comprehensive documentation with architecture overview, deployment guide, troubleshooting, design system, security notes
 
 ### Why `server.py` is NOT on GitHub
 - `server.py`, `admin.html`, `*.bat`, `secrets.json` are **intentionally gitignored** (security hardening from 2025-05-20)
