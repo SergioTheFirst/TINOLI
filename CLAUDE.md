@@ -10,20 +10,31 @@
 
 - Dark purple bg: `#09040f`, cards: `#1a0c2e`
 - Gold accent: `#d4a84b`
-- Fonts: Cinzel (logo), Cormorant Garamond (body), Great Vibes (script)
+- Fonts: Playfair Display (headings), DM Sans (body), Cinzel (logo/nav/buttons)
 - Base font: 18px
 
 ## Structure
 
-- `index.html` — homepage with hero + featured works
-- `gallery.html` — gallery with category filters
+- `index.html` — homepage with hero + infinite-scroll gallery
+- `gallery.html` — standalone gallery page (legacy, redirect candidate)
 - `about.html` — about the maker
 - `contact.html` — contacts (Telegram, WhatsApp, Instagram, VK)
-- `admin.html` — local-only admin panel
-- `server.py` — local dev server
+- `admin.html` — local-only admin panel (gitignored)
+- `server.py` — local dev server (gitignored)
 - `config.json` — all editable text, contacts, SEO
 - `works/works.json` — jewelry catalog
 - `works/images/` — photos (main + hover)
+- `js/admin-edit.js` — edit-work modal logic for admin panel
+- `tools/` — admin patch scripts (dev-only)
+
+## Key Features (2025-05-22)
+
+- **Infinite scroll on homepage:** works load 12 at a time via IntersectionObserver, filter by category, state preserved in URL
+- **Admin: publish button always visible** in header; click switches to deploy tab
+- **Admin: edit existing works** — modal with title/category/description, saves via `POST /update-work`
+- **Image compression:** client-side Canvas API, max 1500px width, JPEG quality 0.85, output cap 3MB
+- **Accessibility:** `:focus-visible` gold outline, `prefers-reduced-motion` disables animations, `aria-live` on loading states
+- **Scroll-to-top FAB:** appears after 800px scroll, fixed bottom-right
 
 ## Important
 

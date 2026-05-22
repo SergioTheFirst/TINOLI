@@ -92,12 +92,17 @@
         <h2>Новые работы</h2>
         <p>Каждое украшение создано вручную с любовью и вниманием к деталям</p>
       </div>
+      <div class="filter-bar">
+        <!-- Filled by JS -->
+      </div>
       <div class="works-grid">
         <!-- Filled by JS from works.json -->
       </div>
-      <div class="text-center" style="margin-top: 3rem;">
-        <a href="gallery.html" class="btn animate-on-scroll">Все работы</a>
-      </div>
+
+      <div id='scroll-sentinel'></div>
+      <div class='loading-spinner' id='loading-spinner' style='display:none'><div class='spinner'></div></div>
+      <div class='end-message' id='end-message' style='display:none'>Показаны все работы</div>
+
     </div>
   </section>
 
@@ -146,6 +151,7 @@
       </div>
     </div>
   </section>
+  <button class="scroll-top" id="scroll-top" aria-label="Наверх">&#8593;</button>
 
   <!-- Footer -->
   <footer class="footer">

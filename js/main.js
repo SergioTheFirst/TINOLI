@@ -1,127 +1,84 @@
 /* ============================================================
-   Magic Stitch — Main JavaScript
+   TINOLI — Main JavaScript (Modernized — Infinite Scroll)
    ============================================================ */
 
 (function() {
   'use strict';
 
-  // ===================== CONFIG LOADER =====================
-  let CONFIG = null;
-  let WORKS = null;
+  // ===================== STATE =====================
+  var CONFIG = null;
+  var WORKS = null;
+  var currentLimit = 12;
+  var PAGE_SIZE = 12;
+  var isLoading = false;
+  var currentFilter = 'all';
+  var observer = null;
+  var scrollTimeout = null;
 
-  async function loadConfig() {
-    try {
-      const response = await fetch('/config.json?t=' + Date.now());
-      CONFIG = await response.json();
-      return CONFIG;
-    } catch (e) {
-      console.warn('Could not load config.json, using defaults');
-      return null;
-    }
+  // ===================== CONFIG & DATA LOADER =====================
+  function loadConfig() {
+    return fetch('/config.json?t=' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(c) { CONFIG = c; return c; })
+      .catch(function() { CONFIG = {}; return null; });
   }
 
-  async function loadWorks() {
-    try {
-      const response = await fetch('/works/works.json?t=' + Date.now());
-      const data = await response.json();
-      WORKS = data.works || [];
-      return WORKS;
-    } catch (e) {
-      console.warn('Could not load works.json');
-      WORKS = [];
-      return [];
-    }
+  function loadWorks() {
+    return fetch('/works/works.json?t=' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(d) { WORKS = (d.works || []).sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); }); return WORKS; })
+      .catch(function() { WORKS = []; return []; });
   }
 
   // ===================== APPLY CONFIG TO PAGE =====================
   function applyConfig() {
     if (!CONFIG) return;
-
-    // Apply all elements with data-config attribute
     document.querySelectorAll('[data-config]').forEach(function(el) {
-      var path = el.getAttribute('data-config');
-      var value = getNestedValue(CONFIG, path);
-      if (value !== undefined && value !== null) {
-        if (el.tagName === 'A' && path.endsWith('_url')) {
-          el.href = value;
-        } else if (el.tagName === 'IMG') {
-          el.src = value;
-        } else {
-          el.textContent = value;
-        }
-      }
+      var val = getNestedValue(CONFIG, el.getAttribute('data-config'));
+      if (val === undefined || val === null) return;
+      if (el.tagName === 'A' && el.getAttribute('data-config').endsWith('_url')) el.href = val;
+      else if (el.tagName === 'IMG') el.src = val;
+      else el.textContent = val;
     });
-
-    // Apply href values
     document.querySelectorAll('[data-config-href]').forEach(function(el) {
-      var path = el.getAttribute('data-config-href');
-      var value = getNestedValue(CONFIG, path);
-      if (value) el.href = value;
+      var val = getNestedValue(CONFIG, el.getAttribute('data-config-href'));
+      if (val) el.href = val;
     });
-
-    // Nav links
     document.querySelectorAll('[data-nav]').forEach(function(el) {
-      var key = el.getAttribute('data-nav');
-      if (CONFIG.nav && CONFIG.nav[key]) {
-        el.textContent = CONFIG.nav[key];
-      }
+      if (CONFIG.nav && CONFIG.nav[el.getAttribute('data-nav')])
+        el.textContent = CONFIG.nav[el.getAttribute('data-nav')];
     });
-
-    // Update page title
-    if (CONFIG.seo && CONFIG.seo.title) {
-      var pageTitle = document.querySelector('title');
-      if (pageTitle && !pageTitle.dataset.noOverride) {
-        // Keep page-specific titles, update only if default
-      }
-    }
-
-    // Insert analytics
     insertAnalytics();
   }
 
   function getNestedValue(obj, path) {
-    return path.split('.').reduce(function(o, key) {
-      return o && o[key] !== undefined ? o[key] : null;
-    }, obj);
+    return path.split('.').reduce(function(o, k) { return o && o[k] !== undefined ? o[k] : null; }, obj);
   }
 
   // ===================== ANALYTICS =====================
   function insertAnalytics() {
     if (!CONFIG || !CONFIG.analytics) return;
-
-    // Yandex Metrika
     if (CONFIG.analytics.yandex_metrika_id) {
       var ym = document.createElement('script');
-      ym.textContent = '(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};' +
-        'm[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r)return;}' +
-        'k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})' +
-        '(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");' +
-        'ym(' + CONFIG.analytics.yandex_metrika_id + ',"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});';
+      ym.textContent = "(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r)return;}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(" + CONFIG.analytics.yandex_metrika_id + ",'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});";
       document.head.appendChild(ym);
-      var noscript = document.createElement('noscript');
-      noscript.innerHTML = '<div><img src="https://mc.yandex.ru/watch/' + CONFIG.analytics.yandex_metrika_id + '" style="position:absolute;left:-9999px;" alt="" /></div>';
-      document.body.appendChild(noscript);
+      var ns = document.createElement('noscript');
+      ns.innerHTML = '<div><img src="https://mc.yandex.ru/watch/' + CONFIG.analytics.yandex_metrika_id + '" style="position:absolute;left:-9999px" alt=""/></div>';
+      document.body.appendChild(ns);
     }
-
-    // Google Analytics
     if (CONFIG.analytics.google_analytics_id) {
-      var gaScript = document.createElement('script');
-      gaScript.async = true;
-      gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + CONFIG.analytics.google_analytics_id;
-      document.head.appendChild(gaScript);
-      var gaInit = document.createElement('script');
-      gaInit.textContent = 'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}' +
-        'gtag("js",new Date());gtag("config","' + CONFIG.analytics.google_analytics_id + '");';
-      document.head.appendChild(gaInit);
+      var ga = document.createElement('script'); ga.async = true;
+      ga.src = 'https://www.googletagmanager.com/gtag/js?id=' + CONFIG.analytics.google_analytics_id;
+      document.head.appendChild(ga);
+      var gi = document.createElement('script');
+      gi.textContent = 'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","' + CONFIG.analytics.google_analytics_id + '");';
+      document.head.appendChild(gi);
     }
-
-    // Cloudflare Web Analytics
     if (CONFIG.analytics.cloudflare_token) {
-      var cfScript = document.createElement('script');
-      cfScript.defer = true;
-      cfScript.src = 'https://static.cloudflareinsights.com/beacon.min.js';
-      cfScript.setAttribute('data-cf-beacon', '{"token":"' + CONFIG.analytics.cloudflare_token + '"}');
-      document.body.appendChild(cfScript);
+      var cf = document.createElement('script'); cf.defer = true;
+      cf.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+      cf.setAttribute('data-cf-beacon', '{"token":"' + CONFIG.analytics.cloudflare_token + '"}');
+      document.body.appendChild(cf);
     }
   }
 
@@ -129,17 +86,9 @@
   function initHeader() {
     var header = document.querySelector('.header');
     if (!header) return;
-
-    var scrollThreshold = 50;
-
     function onScroll() {
-      if (window.scrollY > scrollThreshold) {
-        header.classList.add('scrolled');
-      } else {
-        header.classList.remove('scrolled');
-      }
+      header.classList.toggle('scrolled', window.scrollY > 50);
     }
-
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }
@@ -149,14 +98,11 @@
     var burger = document.querySelector('.burger');
     var nav = document.querySelector('.nav');
     if (!burger || !nav) return;
-
     burger.addEventListener('click', function() {
       burger.classList.toggle('active');
       nav.classList.toggle('open');
       document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
     });
-
-    // Close on link click
     nav.querySelectorAll('a').forEach(function(link) {
       link.addEventListener('click', function() {
         burger.classList.remove('active');
@@ -164,8 +110,6 @@
         document.body.style.overflow = '';
       });
     });
-
-    // Close on outside click
     document.addEventListener('click', function(e) {
       if (nav.classList.contains('open') && !nav.contains(e.target) && !burger.contains(e.target)) {
         burger.classList.remove('active');
@@ -177,133 +121,206 @@
 
   // ===================== SCROLL ANIMATIONS =====================
   function initScrollAnimations() {
-    var elements = document.querySelectorAll('.animate-on-scroll');
+    var elements = document.querySelectorAll('.animate-on-scroll:not(.observed)');
     if (!elements.length) return;
-
-    var observer = new IntersectionObserver(function(entries) {
+    var ob = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
+          entry.target.classList.add('observed');
+          ob.unobserve(entry.target);
         }
       });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    });
-
-    elements.forEach(function(el) {
-      observer.observe(el);
-    });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    elements.forEach(function(el) { ob.observe(el); });
   }
 
   // ===================== HERO PARTICLES =====================
   function initParticles() {
     var container = document.querySelector('.hero-particles');
     if (!container) return;
-
     for (var i = 0; i < 30; i++) {
-      var particle = document.createElement('div');
-      particle.className = 'particle';
-      particle.style.left = Math.random() * 100 + '%';
-      particle.style.top = Math.random() * 100 + '%';
-      particle.style.animationDelay = Math.random() * 8 + 's';
-      particle.style.animationDuration = (6 + Math.random() * 6) + 's';
-      particle.style.opacity = (0.1 + Math.random() * 0.3).toString();
-      particle.style.width = (1 + Math.random() * 2) + 'px';
-      particle.style.height = particle.style.width;
-      container.appendChild(particle);
+      var p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + '%';
+      p.style.animationDelay = Math.random() * 8 + 's';
+      p.style.animationDuration = (6 + Math.random() * 6) + 's';
+      p.style.opacity = (0.1 + Math.random() * 0.3);
+      p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+      container.appendChild(p);
     }
   }
 
   // ===================== WORKS RENDERING =====================
-  function renderWorks(works, container, limit) {
-    if (!container) return;
+  function createCard(work, index, isNew) {
+    var card = document.createElement('div');
+    var delayClass = isNew ? '' : ' animate-on-scroll stagger-' + ((index % 6) + 1);
+    card.className = 'work-card' + delayClass;
+    card.setAttribute('data-category', work.category || 'other');
+    card.setAttribute('data-index', index.toString());
 
-    var items = limit ? works.slice(0, limit) : works;
+    var imgSrc = '/works/images/' + work.filename;
+    var hoverSrc = work.filename_hover ? '/works/images/' + work.filename_hover : '';
 
-    if (items.length === 0) {
-      container.innerHTML = '<div class="empty-state">' +
-        '<div class="icon">&#10022;</div>' +
-        '<p>Скоро здесь появятся работы...</p></div>';
-      return;
-    }
+    var categoryName = (CONFIG && CONFIG.categories && CONFIG.categories[work.category])
+      ? CONFIG.categories[work.category] : (work.category || '');
 
-    container.innerHTML = '';
+    card.innerHTML =
+      '<div class="work-card-image">' +
+        '<img src="' + imgSrc + '" alt="' + escapeHtml(work.title) + '" loading="lazy" decoding="async">' +
+        (hoverSrc ? '<img src="' + hoverSrc + '" alt="' + escapeHtml(work.title) + '" class="img-hover" loading="lazy" decoding="async">' : '') +
+      '</div>' +
+      '<div class="work-card-info">' +
+        '<h3>' + escapeHtml(work.title) + '</h3>' +
+        '<p>' + escapeHtml(work.description || '') + '</p>' +
+        '<span class="category-tag">' + escapeHtml(categoryName) + '</span>' +
+      '</div>';
 
-    items.forEach(function(work, index) {
-      var card = document.createElement('div');
-      card.className = 'work-card animate-on-scroll stagger-' + ((index % 6) + 1);
-      card.setAttribute('data-category', work.category || 'other');
-      card.setAttribute('data-index', index.toString());
-
-      var imgSrc = '/works/images/' + work.filename;
-      var hoverSrc = work.filename_hover ? '/works/images/' + work.filename_hover : '';
-
-      var categoryName = '';
-      if (CONFIG && CONFIG.categories && CONFIG.categories[work.category]) {
-        categoryName = CONFIG.categories[work.category];
-      } else {
-        categoryName = work.category || '';
-      }
-
-      card.innerHTML =
-        '<div class="work-card-image">' +
-          '<img src="' + imgSrc + '" alt="' + escapeHtml(work.title) + '" loading="lazy">' +
-          (hoverSrc ? '<img src="' + hoverSrc + '" alt="' + escapeHtml(work.title) + '" class="img-hover" loading="lazy">' : '') +
-        '</div>' +
-        '<div class="work-card-info">' +
-          '<h3>' + escapeHtml(work.title) + '</h3>' +
-          '<p>' + escapeHtml(work.description || '') + '</p>' +
-          '<span class="category-tag">' + escapeHtml(categoryName) + '</span>' +
-        '</div>';
-
-      card.addEventListener('click', function() {
-        openLightbox(items, index);
-      });
-
-      container.appendChild(card);
+    card.addEventListener('click', function() {
+      openLightbox(getFilteredWorks(), getFilteredWorks().indexOf(work));
     });
 
-    // Re-init scroll animations for new elements
-    initScrollAnimations();
+    return card;
   }
 
-  // ===================== FILTER =====================
+  function getFilteredWorks() {
+    if (!WORKS) return [];
+    if (currentFilter === 'all') return WORKS;
+    return WORKS.filter(function(w) { return w.category === currentFilter; });
+  }
+
+  function renderWorks(works, container) {
+    if (!container) return;
+    if (!works || works.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">&#10022;</div><p>Скоро здесь появятся работы...</p></div>';
+      document.getElementById('loading-spinner').style.display = 'none';
+      document.getElementById('end-message').style.display = 'none';
+      return;
+    }
+    container.innerHTML = '';
+    currentLimit = PAGE_SIZE;
+    var batch = works.slice(0, currentLimit);
+    batch.forEach(function(w, i) { container.appendChild(createCard(w, i, false)); });
+    initScrollAnimations();
+    updateEndState(works);
+  }
+
+  function appendWorks(works, container) {
+    if (!container || isLoading) return;
+    isLoading = true;
+    document.getElementById('loading-spinner').style.display = 'block';
+
+    setTimeout(function() {
+      var batch = works.slice(currentLimit, currentLimit + PAGE_SIZE);
+      batch.forEach(function(w, i) {
+        container.appendChild(createCard(w, currentLimit + i, true));
+      });
+      currentLimit += batch.length;
+      isLoading = false;
+      document.getElementById('loading-spinner').style.display = 'none';
+      initScrollAnimations();
+      updateEndState(works);
+    }, 300);
+  }
+
+  function updateEndState(works) {
+    var sentinel = document.getElementById('scroll-sentinel');
+    var endMsg = document.getElementById('end-message');
+    if (currentLimit >= works.length) {
+      if (sentinel) sentinel.style.display = 'none';
+      if (endMsg) { endMsg.style.display = 'block'; endMsg.setAttribute('aria-live', 'polite'); }
+    } else {
+      if (sentinel) sentinel.style.display = '';
+      if (endMsg) endMsg.style.display = 'none';
+    }
+  }
+
+  // ===================== INFINITE SCROLL =====================
+  function initInfiniteScroll() {
+    var sentinel = document.getElementById('scroll-sentinel');
+    var grid = document.querySelector('.works-grid');
+    if (!sentinel || !grid) return;
+
+    var io = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting && !isLoading) {
+        var filtered = getFilteredWorks();
+        if (currentLimit < filtered.length) {
+          appendWorks(filtered, grid);
+        }
+      }
+    }, { rootMargin: '400px 0px 0px 0px' });
+
+    io.observe(sentinel);
+  }
+
+  // ===================== SCROLL-TO-TOP =====================
+  function initScrollToTop() {
+    var btn = document.getElementById('scroll-top');
+    if (!btn) return;
+    window.addEventListener('scroll', function() {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function() {
+        btn.classList.toggle('visible', window.scrollY > 800);
+      }, 100);
+    }, { passive: true });
+    btn.addEventListener('click', function() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.querySelector('.logo').focus({ preventScroll: true });
+    });
+  }
+
+  // ===================== FILTERS =====================
   function initFilters() {
     var filterBar = document.querySelector('.filter-bar');
     var grid = document.querySelector('.works-grid');
     if (!filterBar || !grid || !WORKS) return;
 
-    // Build filter buttons from config categories
     filterBar.innerHTML = '';
     var categories = CONFIG && CONFIG.categories ? CONFIG.categories : { all: 'Все работы' };
 
     Object.keys(categories).forEach(function(key) {
       var btn = document.createElement('button');
-      btn.className = 'filter-btn' + (key === 'all' ? ' active' : '');
+      btn.className = 'filter-btn' + (key === currentFilter ? ' active' : '');
       btn.setAttribute('data-filter', key);
       btn.textContent = categories[key];
       filterBar.appendChild(btn);
     });
 
-    // Filter click handler
     filterBar.addEventListener('click', function(e) {
       var btn = e.target.closest('.filter-btn');
       if (!btn) return;
 
-      filterBar.querySelectorAll('.filter-btn').forEach(function(b) {
-        b.classList.remove('active');
-      });
+      filterBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
 
-      var filter = btn.getAttribute('data-filter');
-      var filtered = filter === 'all' ? WORKS : WORKS.filter(function(w) {
-        return w.category === filter;
-      });
+      currentFilter = btn.getAttribute('data-filter');
+      currentLimit = PAGE_SIZE;
 
+      var filtered = getFilteredWorks();
       renderWorks(filtered, grid);
+
+      // Update URL for sharing
+      if (window.history && window.history.replaceState) {
+        var url = new URL(window.location);
+        if (currentFilter === 'all') {
+          url.searchParams.delete('category');
+        } else {
+          url.searchParams.set('category', currentFilter);
+        }
+        window.history.replaceState({}, '', url.toString());
+      }
     });
+
+    // Read initial filter from URL
+    var params = new URL(window.location).searchParams;
+    var urlCategory = params.get('category');
+    if (urlCategory && categories[urlCategory]) {
+      currentFilter = urlCategory;
+      filterBar.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-filter') === currentFilter);
+      });
+    }
   }
 
   // ===================== LIGHTBOX =====================
@@ -312,100 +329,69 @@
   function openLightbox(works, index) {
     lightboxData.works = works;
     lightboxData.currentIndex = index;
-
-    var lightbox = document.getElementById('lightbox');
-    if (!lightbox) {
-      createLightbox();
-      lightbox = document.getElementById('lightbox');
-    }
-
+    var lb = document.getElementById('lightbox');
+    if (!lb) { createLightbox(); lb = document.getElementById('lightbox'); }
     updateLightbox();
-    lightbox.classList.add('active');
+    lb.classList.add('active');
     document.body.style.overflow = 'hidden';
   }
 
   function closeLightbox() {
-    var lightbox = document.getElementById('lightbox');
-    if (lightbox) {
-      lightbox.classList.remove('active');
-      document.body.style.overflow = '';
-    }
+    var lb = document.getElementById('lightbox');
+    if (lb) { lb.classList.remove('active'); document.body.style.overflow = ''; }
   }
 
   function updateLightbox() {
-    var work = lightboxData.works[lightboxData.currentIndex];
-    if (!work) return;
-
+    var w = lightboxData.works[lightboxData.currentIndex];
+    if (!w) return;
     var img = document.querySelector('.lightbox-img');
     var title = document.querySelector('.lightbox-title');
     var desc = document.querySelector('.lightbox-desc');
-
-    if (img) img.src = '/works/images/' + work.filename;
-    if (title) title.textContent = work.title;
-    if (desc) desc.textContent = work.description || '';
+    if (img) img.src = '/works/images/' + w.filename;
+    if (title) title.textContent = w.title;
+    if (desc) desc.textContent = w.description || '';
   }
 
   function createLightbox() {
-    var lightbox = document.createElement('div');
-    lightbox.id = 'lightbox';
-    lightbox.className = 'lightbox';
-    lightbox.innerHTML =
-      '<button class="lightbox-close" aria-label="Close">&times;</button>' +
-      '<button class="lightbox-nav lightbox-prev" aria-label="Previous">&#8249;</button>' +
+    var lb = document.createElement('div');
+    lb.id = 'lightbox';
+    lb.className = 'lightbox';
+    lb.innerHTML =
+      '<button class="lightbox-close" aria-label="Закрыть">&times;</button>' +
+      '<button class="lightbox-nav lightbox-prev" aria-label="Назад">&#8249;</button>' +
       '<div class="lightbox-content">' +
         '<img class="lightbox-img" src="" alt="">' +
-        '<div class="lightbox-info">' +
-          '<h3 class="lightbox-title"></h3>' +
-          '<p class="lightbox-desc"></p>' +
-        '</div>' +
+        '<div class="lightbox-info"><h3 class="lightbox-title"></h3><p class="lightbox-desc"></p></div>' +
       '</div>' +
-      '<button class="lightbox-nav lightbox-next" aria-label="Next">&#8250;</button>';
+      '<button class="lightbox-nav lightbox-next" aria-label="Вперёд">&#8250;</button>';
+    document.body.appendChild(lb);
 
-    document.body.appendChild(lightbox);
-
-    lightbox.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
-
-    lightbox.addEventListener('click', function(e) {
-      if (e.target === lightbox) closeLightbox();
-    });
-
-    lightbox.querySelector('.lightbox-prev').addEventListener('click', function(e) {
+    lb.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+    lb.addEventListener('click', function(e) { if (e.target === lb) closeLightbox(); });
+    lb.querySelector('.lightbox-prev').addEventListener('click', function(e) {
       e.stopPropagation();
       lightboxData.currentIndex = (lightboxData.currentIndex - 1 + lightboxData.works.length) % lightboxData.works.length;
       updateLightbox();
     });
-
-    lightbox.querySelector('.lightbox-next').addEventListener('click', function(e) {
+    lb.querySelector('.lightbox-next').addEventListener('click', function(e) {
       e.stopPropagation();
       lightboxData.currentIndex = (lightboxData.currentIndex + 1) % lightboxData.works.length;
       updateLightbox();
     });
-
-    // Keyboard navigation
     document.addEventListener('keydown', function(e) {
-      if (!lightbox.classList.contains('active')) return;
+      if (!lb.classList.contains('active')) return;
       if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowLeft') {
-        lightboxData.currentIndex = (lightboxData.currentIndex - 1 + lightboxData.works.length) % lightboxData.works.length;
-        updateLightbox();
-      }
-      if (e.key === 'ArrowRight') {
-        lightboxData.currentIndex = (lightboxData.currentIndex + 1) % lightboxData.works.length;
-        updateLightbox();
-      }
+      if (e.key === 'ArrowLeft') { lightboxData.currentIndex = (lightboxData.currentIndex - 1 + lightboxData.works.length) % lightboxData.works.length; updateLightbox(); }
+      if (e.key === 'ArrowRight') { lightboxData.currentIndex = (lightboxData.currentIndex + 1) % lightboxData.works.length; updateLightbox(); }
     });
   }
 
-  // ===================== ACTIVE NAV LINK =====================
+  // ===================== ACTIVE NAV =====================
   function setActiveNav() {
-    var path = window.location.pathname;
-    var filename = path.split('/').pop() || 'index.html';
-
+    var filename = window.location.pathname.split('/').pop() || 'index.html';
     document.querySelectorAll('.nav a').forEach(function(link) {
       var href = link.getAttribute('href');
-      if (href === filename || (filename === '' && href === 'index.html') || (filename === '/' && href === 'index.html')) {
-        link.classList.add('active');
-      }
+      link.classList.toggle('active', href === filename || (filename === '' && href === 'index.html'));
     });
   }
 
@@ -416,60 +402,48 @@
     return div.innerHTML;
   }
 
-  // ===================== PAGE-SPECIFIC INIT =====================
-  async function initPage() {
-    // Load config and works in parallel
-    await Promise.all([loadConfig(), loadWorks()]);
+  // ===================== INIT =====================
+  function initPage() {
+    Promise.all([loadConfig(), loadWorks()]).then(function() {
+      applyConfig();
+      setActiveNav();
+      initHeader();
+      initMobileNav();
 
-    // Apply config to all pages
-    applyConfig();
-    setActiveNav();
-    initHeader();
-    initMobileNav();
+      var page = document.body.getAttribute('data-page');
 
-    // Page-specific logic
-    var page = document.body.getAttribute('data-page');
+      switch (page) {
+        case 'home':
+          initParticles();
+          var grid = document.querySelector('.works-grid');
+          if (grid && WORKS) {
+            initFilters();
+            renderWorks(getFilteredWorks(), grid);
+            initInfiniteScroll();
+            initScrollToTop();
+          }
+          break;
 
-    switch (page) {
-      case 'home':
-        initParticles();
-        // Render latest works
-        var homeGrid = document.querySelector('.works-grid');
-        if (homeGrid && WORKS) {
-          var sorted = WORKS.slice().sort(function(a, b) {
-            return (b.date || '').localeCompare(a.date || '');
-          });
-          renderWorks(sorted, homeGrid, 6);
-        }
-        break;
+        case 'gallery':
+          var gGrid = document.querySelector('.works-grid');
+          if (gGrid && WORKS) {
+            initFilters();
+            renderWorks(getFilteredWorks(), gGrid);
+          }
+          break;
 
-      case 'gallery':
-        var galleryGrid = document.querySelector('.works-grid');
-        if (galleryGrid && WORKS) {
-          var sortedAll = WORKS.slice().sort(function(a, b) {
-            return (b.date || '').localeCompare(a.date || '');
-          });
-          renderWorks(sortedAll, galleryGrid);
-          initFilters();
-        }
-        break;
+        case 'about':
+        case 'contact':
+          break;
+      }
 
-      case 'about':
-        break;
-
-      case 'contact':
-        break;
-    }
-
-    // Init scroll animations
-    initScrollAnimations();
+      initScrollAnimations();
+    });
   }
 
-  // ===================== INIT =====================
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPage);
   } else {
     initPage();
   }
-
 })();

@@ -13,7 +13,7 @@
 
   --gold: #d4a84b;
   --gold-light: #f0c96a;
-  --gold-dark: #a8832a;
+  --gold-dark: #c49b3f;
   --gold-pale: rgba(212, 168, 75, 0.12);
   --gold-shimmer: linear-gradient(135deg, #a8832a 0%, #d4a84b 30%, #f0c96a 55%, #d4a84b 75%, #a8832a 100%);
 
@@ -27,7 +27,7 @@
   --shadow-gold: 0 0 40px rgba(212, 168, 75, 0.15);
   --shadow-card: 0 12px 48px rgba(0, 0, 0, 0.65);
 
-  --radius: 3px;
+  --radius: 6px;
   --transition: 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-fast: 0.18s ease;
   --max-width: 1320px;
@@ -48,7 +48,7 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 16px;
+  font-size: 18px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -60,7 +60,7 @@ body {
   background-color: var(--bg-primary);
   line-height: 1.75;
   overflow-x: hidden;
-  min-height: 100vh;
+  min-height: 85vh;
 }
 
 img {
@@ -277,7 +277,7 @@ p {
 
 /* ===================== HERO ===================== */
 .hero {
-  min-height: 100vh;
+  min-height: 85vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1039,4 +1039,90 @@ p {
   .container { padding: 0 1.25rem; }
   .btn { padding: 0.85rem 2rem; }
   .hero-ornament { display: none; }
+}
+
+
+/* ===================== LOADING SPINNER ===================== */
+.loading-spinner {
+  text-align: center;
+  padding: 2rem 0;
+}
+.spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===================== END MESSAGE ===================== */
+.end-message {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  font-family: var(--font-accent);
+  color: var(--gold-dark);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+/* ===================== SCROLL-TO-TOP BUTTON ===================== */
+.scroll-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 48px;
+  height: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 1.3rem;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease, background 0.25s ease;
+  z-index: 900;
+}
+.scroll-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.scroll-top:hover {
+  background: var(--gold);
+  color: var(--bg-primary);
+}
+
+/* ===================== ACCESSIBILITY: FOCUS ===================== */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+button:focus-visible, a:focus-visible, .work-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.work-card:focus-visible {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-gold);
+}
+
+/* ===================== ACCESSIBILITY: REDUCED MOTION ===================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
