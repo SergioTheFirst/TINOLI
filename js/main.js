@@ -58,22 +58,6 @@
   // ===================== ANALYTICS =====================
   function insertAnalytics() {
     if (!CONFIG || !CONFIG.analytics) return;
-    if (CONFIG.analytics.yandex_metrika_id) {
-      var ym = document.createElement('script');
-      ym.textContent = "(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r)return;}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(" + CONFIG.analytics.yandex_metrika_id + ",'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});";
-      document.head.appendChild(ym);
-      var ns = document.createElement('noscript');
-      ns.innerHTML = '<div><img src="https://mc.yandex.ru/watch/' + CONFIG.analytics.yandex_metrika_id + '" style="position:absolute;left:-9999px" alt=""/></div>';
-      document.body.appendChild(ns);
-    }
-    if (CONFIG.analytics.google_analytics_id) {
-      var ga = document.createElement('script'); ga.async = true;
-      ga.src = 'https://www.googletagmanager.com/gtag/js?id=' + CONFIG.analytics.google_analytics_id;
-      document.head.appendChild(ga);
-      var gi = document.createElement('script');
-      gi.textContent = 'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","' + CONFIG.analytics.google_analytics_id + '");';
-      document.head.appendChild(gi);
-    }
     if (CONFIG.analytics.cloudflare_token) {
       var cf = document.createElement('script'); cf.defer = true;
       cf.src = 'https://static.cloudflareinsights.com/beacon.min.js';

@@ -1126,3 +1126,7 @@ button:focus-visible, a:focus-visible, .work-card:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* Правовые сведения в подвале: мелко, но читаемо и со ссылками, видимыми без наведения. */
+.footer .footer-legal { font-size: 0.78rem; opacity: 0.7; max-width: 720px; margin: 0.5rem auto 0; line-height: 1.5; }
+.footer .footer-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
