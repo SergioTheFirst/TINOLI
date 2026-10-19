@@ -144,8 +144,8 @@
     card.setAttribute('data-category', work.category || 'other');
     card.setAttribute('data-index', index.toString());
 
-    var imgSrc = '/works/images/' + work.filename;
-    var hoverSrc = work.filename_hover ? '/works/images/' + work.filename_hover : '';
+    var imgSrc = '/works/images/' + encodeURIComponent(work.filename);
+    var hoverSrc = work.filename_hover ? '/works/images/' + encodeURIComponent(work.filename_hover) : '';
 
     var categoryName = (CONFIG && CONFIG.categories && CONFIG.categories[work.category])
       ? CONFIG.categories[work.category] : (work.category || '');
@@ -331,7 +331,7 @@
     var img = document.querySelector('.lightbox-img');
     var title = document.querySelector('.lightbox-title');
     var desc = document.querySelector('.lightbox-desc');
-    if (img) img.src = '/works/images/' + w.filename;
+    if (img) img.src = '/works/images/' + encodeURIComponent(w.filename);
     if (title) title.textContent = w.title;
     if (desc) desc.textContent = w.description || '';
   }
@@ -383,7 +383,8 @@
   function escapeHtml(str) {
     var div = document.createElement('div');
     div.textContent = str;
-    return div.innerHTML;
+    // Quotes too: the result also goes into attribute values (alt="...")
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ===================== INIT =====================

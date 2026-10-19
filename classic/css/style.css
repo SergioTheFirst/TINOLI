@@ -814,7 +814,7 @@ p {
   color: var(--text-primary);
 }
 
-.contact-info .order-text {
+.contact-info .intro-text {
   color: var(--text-muted);
   font-size: 1.05rem;
   margin-bottom: 2rem;

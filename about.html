@@ -1,137 +1,77 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>О мастере — TINOLI</title>
-  <meta name="description" content="Узнайте больше о мастере украшений TINOLI. Более 10 лет создания авторских украшений ручной работы.">
-
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="О мастере — TINOLI">
-  <meta property="og:description" content="Узнайте больше о мастере украшений TINOLI.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://tinoli.ru/about.html">
-  <meta property="og:locale" content="ru_RU">
-
-  <!-- Schema.org Person -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    "name": "TINOLI",
-    "url": "https://tinoli.ru",
-    "jobTitle": "Мастер украшений ручной работы",
-    "knowsAbout": ["Бисероплетение", "Ювелирное дело", "Handmade украшения"]
-  }
-  </script>
-
-  <!-- Fonts -->
-  <link rel="stylesheet" href="css/fonts.css">
-
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мастер — TINOLI</title>
+<meta name="description" content="Мастер TINOLI о своих украшениях и о вышивке бисером.">
+<link rel="canonical" href="https://tinoli.ru/about.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TINOLI">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Мастер — TINOLI">
+<meta property="og:description" content="Мастер TINOLI о своих украшениях и о вышивке бисером.">
+<meta property="og:url" content="https://tinoli.ru/about.html">
+<meta property="og:image" content="https://tinoli.ru/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120b13">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/jost-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/nsd-cond-300-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/site.css">
 </head>
 <body data-page="about">
-
-  <!-- Header -->
-  <header class="header">
-    <div class="header-inner">
-      <a href="index.html" class="logo" data-config="site.name">TINOLI</a>
-      <nav class="nav">
-        <a href="index.html" data-nav="home">Главная</a>
-        <a href="gallery.html" data-nav="gallery">Галерея</a>
-        <a href="about.html" data-nav="about">О мастере</a>
-        <a href="contact.html" data-nav="contact">Контакты</a>
-      </nav>
-      <div class="burger">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-    </div>
-  </header>
-
-  <!-- Page Hero -->
-  <section class="page-hero">
-    <div class="container">
-      <h1>О мастере</h1>
-      <p class="subtitle">История и вдохновение</p>
-    </div>
-  </section>
-
-  <!-- Divider -->
-  <div class="section-divider">
-    <span class="ornament">&#10022;</span>
+<a class="skip" href="#main">К содержанию</a>
+<header class="hdr">
+  <div class="hdr__in">
+    <a class="logo" href="/" aria-label="TINOLI, на главную"><svg class="logo__svg" viewBox="0 -6 496 107" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0.0 0.0H64.0V6.0H0.0ZM29.0 0.0H35.0V100.0H29.0ZM104.0 0.0H110.0V100.0H104.0ZM150.0 0.0H156.0V100.0H150.0ZM214.0 0.0H220.0V100.0H214.0ZM150.0 0H157.7L220.0 100.0H212.3ZM400.0 0.0H406.0V100.0H400.0ZM400.0 94.0H450.0V100.0H400.0ZM490.0 0.0H496.0V100.0H490.0ZM310.0 -4.9L318.0 5.4L310.0 15.7L302.0 5.4Z"/><circle cx="325.3" cy="8.1" r="5.4"/><circle cx="338.7" cy="15.8" r="5.4"/><circle cx="348.6" cy="27.7" r="5.4"/><circle cx="353.9" cy="42.3" r="5.4"/><circle cx="353.9" cy="57.7" r="5.4"/><circle cx="348.6" cy="72.3" r="5.4"/><circle cx="338.7" cy="84.2" r="5.4"/><circle cx="325.3" cy="91.9" r="5.4"/><circle cx="310.0" cy="94.6" r="5.4"/><circle cx="294.7" cy="91.9" r="5.4"/><circle cx="281.3" cy="84.2" r="5.4"/><circle cx="271.4" cy="72.3" r="5.4"/><circle cx="266.1" cy="57.7" r="5.4"/><circle cx="266.1" cy="42.3" r="5.4"/><circle cx="271.4" cy="27.7" r="5.4"/><circle cx="281.3" cy="15.8" r="5.4"/><circle cx="294.7" cy="8.1" r="5.4"/></svg></a>
+    <nav class="nav" aria-label="Основное меню">
+      <a href="/#works">Работы</a>
+      <a href="/about.html" aria-current="page">Мастер</a>
+      <a href="/contact.html">Написать</a>
+    </nav>
   </div>
-
-  <!-- About Content -->
-  <section class="section">
-    <div class="container">
-      <div class="about-grid">
-        <div class="about-image animate-on-scroll">
-          <div class="about-image-frame">
-            <div class="about-image-placeholder">TINOLI</div>
-          </div>
-        </div>
-        <div class="about-text animate-on-scroll stagger-2">
-          <div class="quote" data-config="about.quote">Каждое украшение начинается с вдохновения и заканчивается восхищением</div>
-          <p data-config="about.text">Я создаю украшения, в которых живёт душа. Каждая бусина подобрана вручную, каждый стежок — осознанный. Мои работы — это не просто аксессуары, это маленькие произведения искусства, которые рассказывают свою историю.</p>
-          <div style="margin-top: 2rem;">
-            <a href="contact.html" class="btn">Связаться со мной</a>
-          </div>
-        </div>
+</header>
+<main id="main" class="page">
+  <div class="wrap">
+    <h1 class="page__title display">Мастер</h1>
+    <div class="page__body split">
+      <p class="quote" data-config="about.quote">Каждое украшение начинается с вдохновения и заканчивается восхищением</p>
+      <div class="prose">
+        <div data-config-paras="about.text"><p>Я создаю украшения, в которых живёт душа. Каждая бусина подобрана вручную, каждый стежок — осознанный. Мои работы — это не просто аксессуары, это маленькие произведения искусства, которые рассказывают свою историю. Более 10 лет я превращаю бисер, камни и нити в украшения, которые становятся талисманами своих владельцев.</p></div>
+        <h2>Техника</h2>
+        <div data-config-paras="about.technique"><p>В вышивке бисером каждую бусину пришивают отдельно, стежок за стежком. Сначала закрепляют кристаллы, затем бисер ложится вокруг них.</p></div>
+        <p class="split__more"><a class="btn" href="/contact.html">Написать мастеру</a></p>
       </div>
     </div>
-  </section>
-
-  <!-- Process Section -->
-  <section class="section">
-    <div class="container">
-      <div class="section-divider" style="margin-bottom: 4rem;">
-        <span class="ornament">&#10022;</span>
-      </div>
-      <div class="section-header animate-on-scroll">
-        <span class="label">Мастерство</span>
-        <h2>Процесс создания</h2>
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
-        <div class="animate-on-scroll stagger-1" style="text-align: center; padding: 2rem; border: 1px solid var(--border);">
-          <div class="step-number">01</div>
-          <h3 style="margin-bottom: 0.5rem;">Идея</h3>
-          <p style="color: var(--text-muted);">Вдохновение приходит отовсюду — природа, архитектура, музыка</p>
-        </div>
-        <div class="animate-on-scroll stagger-2" style="text-align: center; padding: 2rem; border: 1px solid var(--border);">
-          <div class="step-number">02</div>
-          <h3 style="margin-bottom: 0.5rem;">Подбор материалов</h3>
-          <p style="color: var(--text-muted);">Только лучший бисер, натуральные камни и качественная фурнитура</p>
-        </div>
-        <div class="animate-on-scroll stagger-3" style="text-align: center; padding: 2rem; border: 1px solid var(--border);">
-          <div class="step-number">03</div>
-          <h3 style="margin-bottom: 0.5rem;">Создание</h3>
-          <p style="color: var(--text-muted);">Дни и недели кропотливой ручной работы над каждой деталью</p>
-        </div>
-      </div>
+  </div>
+</main>
+<footer class="ftr">
+  <div class="ftr__in">
+    <div class="ftr__brand">
+      <a class="logo logo--sm" href="/" aria-label="TINOLI, на главную"><svg class="logo__svg" viewBox="0 -6 496 107" fill="currentColor" aria-hidden="true" focusable="false"><path d="M0.0 0.0H64.0V6.0H0.0ZM29.0 0.0H35.0V100.0H29.0ZM104.0 0.0H110.0V100.0H104.0ZM150.0 0.0H156.0V100.0H150.0ZM214.0 0.0H220.0V100.0H214.0ZM150.0 0H157.7L220.0 100.0H212.3ZM400.0 0.0H406.0V100.0H400.0ZM400.0 94.0H450.0V100.0H400.0ZM490.0 0.0H496.0V100.0H490.0ZM310.0 -4.9L318.0 5.4L310.0 15.7L302.0 5.4Z"/><circle cx="325.3" cy="8.1" r="5.4"/><circle cx="338.7" cy="15.8" r="5.4"/><circle cx="348.6" cy="27.7" r="5.4"/><circle cx="353.9" cy="42.3" r="5.4"/><circle cx="353.9" cy="57.7" r="5.4"/><circle cx="348.6" cy="72.3" r="5.4"/><circle cx="338.7" cy="84.2" r="5.4"/><circle cx="325.3" cy="91.9" r="5.4"/><circle cx="310.0" cy="94.6" r="5.4"/><circle cx="294.7" cy="91.9" r="5.4"/><circle cx="281.3" cy="84.2" r="5.4"/><circle cx="271.4" cy="72.3" r="5.4"/><circle cx="266.1" cy="57.7" r="5.4"/><circle cx="266.1" cy="42.3" r="5.4"/><circle cx="271.4" cy="27.7" r="5.4"/><circle cx="281.3" cy="15.8" r="5.4"/><circle cx="294.7" cy="8.1" r="5.4"/></svg></a>
+      <p class="ftr__motto" lang="en">There Is No Other Like It</p>
     </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <span class="footer-logo" data-config="site.name">TINOLI</span>
+    <nav class="ftr__nav" aria-label="Разделы сайта">
+      <a href="/#works">Работы</a>
+      <a href="/about.html">Мастер</a>
+      <a href="/contact.html">Написать</a>
+      <a href="/privacy.html">Политика обработки персональных данных</a>
+      <a href="/classic/">Прежняя версия сайта</a>
+    </nav>
+    <div class="ftr__legal">
+      <p>Владелец сайта и оператор персональных данных — Сергей Станиславович Медведев, <a href="mailto:master@tinoli.ru">master@tinoli.ru</a></p>
+      <p>Сайт не содержит рекламы: все материалы — собственные работы мастера, «erid» не требуется. Cookies сайт не устанавливает.</p>
+      <p>* WhatsApp и Instagram принадлежат компании Meta Platforms Inc., деятельность которой признана экстремистской и запрещена на территории Российской Федерации.</p>
       <p data-config="footer.copyright">© 2026 TINOLI. Все права защищены.</p>
-      <p class="footer-made" data-config="footer.made_with">Сделано с любовью к прекрасному</p>
-      <p class="footer-legal">Владелец сайта и оператор персональных данных — Сергей Станиславович Медведев,
-        <a href="mailto:master@tinoli.ru">master@tinoli.ru</a> ·
-        <a href="privacy.html">Политика обработки персональных данных</a></p>
-      <p class="footer-legal">Сайт не содержит рекламы: все материалы — собственные работы мастера, «erid» не требуется.
-        Cookies сайт не устанавливает.</p>
-      <p class="footer-legal">* WhatsApp и Instagram принадлежат компании Meta Platforms Inc., деятельность которой
-        признана экстремистской и запрещена на территории Российской Федерации.</p>
     </div>
-  </footer>
-
-  <script src="js/main.js"></script>
+  </div>
+</footer>
+<script src="/js/site.js" defer></script>
 </body>
 </html>

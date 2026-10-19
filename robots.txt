@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin.html
 
+Sitemap: https://tinoli.ru/sitemap.xml
 Host: https://tinoli.ru

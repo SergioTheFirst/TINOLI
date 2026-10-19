@@ -32,7 +32,7 @@ Startup banner and shutdown message used plain `print()` without `flush=True`, w
 ```python
 # BEFORE
 print('  ====================================')
-print('       Magic Stitch Server')
+print('       TINOLI Server')
 ```
 
 ## Solution
@@ -81,7 +81,7 @@ Every HTTP request now shows a timestamped line the moment it arrives:
 ```python
 print('', flush=True)
 print('  ====================================', flush=True)
-print('       Magic Stitch Server', flush=True)
+print('       TINOLI Server', flush=True)
 ```
 
 ## Testing

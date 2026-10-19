@@ -12,6 +12,10 @@ admin.html
 secrets.json
 secrets.json.txt
 
+# Temporary and backup copies the admin server writes next to config.json / works.json
+*.tmp
+*.bak
+
 # System
 .DS_Store
 Thumbs.db
