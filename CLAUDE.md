@@ -3,85 +3,79 @@
 **Brand:** TINOLI — "There Is No Other Like It"
 **Site:** https://tinoli.ru
 **Repo:** https://github.com/SergioTheFirst/TINOLI
-**Deploy:** GitHub Pages (auto on push to main)
-**Stack:** HTML/CSS/JS + Python 3.8+ local server (stdlib only)
+**Deploy:** GitHub Pages (custom domain via CNAME)
+**Stack:** static HTML/CSS/JS (no build step) + local admin: Python 3.8+ server (stdlib only)
 
-## Design
+## Rules that always apply
 
-- Dark purple bg: `#09040f`, cards: `#1a0c2e`
-- Gold accent: `#d4a84b`
-- Fonts: Playfair Display (headings), DM Sans (body), Cinzel (logo/nav/buttons)
-- Base font: 18px
+- A gallery, never a shop: no wording about buying, prices, orders, stock, delivery, payment, gifts,
+  shops or exclusivity in any text, meta tag, JSON-LD (no commercial schema.org types), config key or
+  doc, the privacy policy included (the owner removed it there on 2026-10-19). Re-scan with a
+  Unicode-aware regex after any text change; the policy text otherwise changes only on the owner's decision.
+- Premium jewellery-house level; no cheap black-and-white tricks, no particles/glow/gradient text.
+- Every font must have full Cyrillic; fonts are self-hosted (no Google requests, 152-ФЗ).
+- `server.py` stays Python 3.8 + stdlib; admin JS stays ES5-style (the admin runs on a weak
+  32-bit Windows PC).
+
+## Design (2026-10-19 redesign, see docs/redesign/DIRECTION.md)
+
+- Concept: the night vitrine of a workshop; each piece is first embroidered in beads, then shown in light.
+- Tokens in `css/site.css`: velvet `#120b13`, stage `#1a111c`, platinum ink `#f2edf4`/`#c3b8c6`/`#9d90a1`,
+  one accent champagne `#d9c595` (actions, focus, active filter only). Dark-only by decision.
+- Fonts: Jost 300–500 (text/UI) + Noto Serif Display Condensed 300 as "TINOLI Display" (display only).
+- Logo: thin geometric TINOLI, the O is a ring of beads with a crystal (`img/logo.svg`, inline in pages).
+- Signature: canvas bead embroidery in the hero (`Embroidery` in `js/site.js`): stitches the mark
+  when the catalogue is empty, otherwise lays the newest work out in beads and resolves to the photo.
+  Respects prefers-reduced-motion.
+- Vitrine = a lit glass case (light from above, top edge 24%, sides 12%, faint velvet pile), no crop
+  marks, no rules between sections. Photos (`placePhoto` in `js/site.js`): within 10% of the case's
+  proportions they fill it (cover); otherwise whole, long edges feathered (8% mask) into a ground of
+  the photo's own two edge colours; the bead layout uses the same geometry and ground. Grid tiles are
+  small cases with a 14px velvet mat. Empty catalogue: «Работы» hides, the hero says so.
+- Beads have a material pass (lit body, hairline rim, contact shadow); the crystal has 8 facets; only the
+  crystal glints. Beside «Написать мастеру» (home and contact page) a still macro of the crystal
+  (`mode: 'macro'`). The Master stays text-only by the owner's decision.
 
 ## Structure
 
-- `index.html` — homepage with hero + infinite-scroll gallery
-- `gallery.html` — standalone gallery page (legacy, redirect candidate)
-- `about.html` — about the maker
-- `contact.html` — contacts (Telegram, WhatsApp, Instagram, VK)
-- `admin.html` — local-only admin panel (gitignored)
-- `server.py` — local dev server (gitignored)
-- `config.json` — all editable text, contacts, SEO
-- `works/works.json` — jewelry catalog
-- `works/images/` — photos (main + hover)
-- `js/admin-edit.js` — edit-work modal logic for admin panel
-- `tools/` — admin patch scripts (dev-only)
+- `index.html` — hero vitrine, works grid (filter by kind, 12 at a time), master teaser, contacts
+- `about.html` (Мастер, text only), `contact.html`, `privacy.html` (policy text verbatim), `404.html`
+- `gallery.html` — legacy URL, redirects to `/#works` keeping `?category=`
+- `works/<id>/index.html` — generated work pages (server.py `build_work_pages()`), viewer with
+  «Украшение / Как носится / Деталь» and a loupe, passport, siblings; do not edit by hand
+- `sitemap.xml` — generated with the work pages
+- `css/site.css`, `js/site.js` — the whole public front end; `fonts/` new fonts; `img/logo.svg`
+- `favicon.svg/.ico`, `apple-touch-icon.png`, `icon-512.png`, `og.png` (1200×630)
+- `classic/` — the previous site, frozen, `noindex`, linked from the footer «Прежняя версия сайта»;
+  reads the same `/config.json` and `/works/works.json`
+- `config.json` — all editable texts (`site`, `home`, `about`, `contact`, `footer`, `categories`,
+  `analytics.cloudflare_token`, `github`, `seo`)
+- `works/works.json` — catalogue: `id, filename, filename_hover?, filename_detail?, title,
+  description, category, date, materials?, size?, year?`
+- Local only (gitignored): `server.py`, `admin.html`, `*.bat`, `secrets.json`, `tests/`
 
-## Key Features (2025-05-22)
+## Admin and publishing
 
-- **Infinite scroll on homepage:** works load 12 at a time via IntersectionObserver, filter by category, state preserved in URL
-- **Admin: publish button always visible** in header; click switches to deploy tab
-- **Admin: edit existing works** — modal with title/category/description, saves via `POST /update-work`
-- **Image compression:** client-side Canvas API, max 1500px width, JPEG quality 0.85, output cap 3MB
-- **Accessibility:** `:focus-visible` gold outline, `prefers-reduced-motion` disables animations, `aria-live` on loading states
-- **Scroll-to-top FAB:** appears after 800px scroll, fixed bottom-right
+- Run `server.bat` (or `python server.py`), open http://localhost:8000/admin.html.
+- Works get three photos: «Украшение» (main), «Как носится» (worn), «Деталь» (macro for the loupe),
+  plus materials, size, year. Photos can be replaced in the edit dialog.
+- «Опубликовать» pushes through the GitHub API, respects `.gitignore`, skips unchanged files and removes
+  deleted files under `works/` from GitHub. By default it publishes only content (`config.json`,
+  `sitemap.xml`, `works/`); the checkbox «Также опубликовать код сайта» sends the rest. This keeps a
+  stale copy on the admin PC from overwriting the site.
+- Publishing asks the owner to confirm (HTTP 409 `needs_confirm`, then `confirm_deletions: true`) when it
+  would delete more than 5 files from GitHub or replace a populated catalogue with an empty one. A hard
+  never-publish list (`*.py`, `*.bat`, `*.spec`, `admin.html`, `tests/`, `tools/`, dot-paths, secret-like
+  names, `*.tmp`/`*.bak`) applies in both modes; a file containing the token aborts the publish.
+- Server hardening (keep it): binds 127.0.0.1; every POST needs the header `X-TINOLI: admin` (the admin
+  JS adds it to each fetch) plus same Origin/Host; GET/HEAD share one public-path check; atomic JSON
+  writes with `.bak`; fine-grained token for SergioTheFirst/TINOLI only (Contents: Read and write).
+- After code changes here, copy `server.py`, `admin.html`, `js/admin-edit.js`, `.gitignore` (and the
+  whole site except `works/`, `config.json`, `secrets.json`, if publishing code from that PC) to the
+  admin PC, restart `server.bat`, and press Ctrl+F5 once in the admin page.
 
-## Important
+## Verification
 
-- No shop/order language — this is a gallery, not a store
-- `secrets.json` is gitignored (GitHub token)
-- `admin.html` and `server.py` are local-only, not for production
-- All content managed via admin panel at localhost:8000/admin.html
-
-## Security (2025-05-20)
-
-- `.gitignore` blocks `*.py`, `*.bat`, `admin.html`, `secrets.json` from git
-- Dev files removed from GitHub repo: `server.py`, `admin.html`, `.bat` files no longer public
-- `server.py` locally blocks `.py`/`.bat`/`secrets.json` via 404, API restricted to localhost only
-- `robots.txt` added: allows all, blocks `/admin.html`, points to sitemap
-
-## Session Log (2026-05-22)
-
-### What was done this session
-1. **Fixed `server.bat`** — added `cd /d "%~dp0"` so it works from any folder
-2. **Fixed broken `server.py`** — restored `handle_delete_work` after PowerShell insert overwrote it; added `POST /update-work` endpoint for editing works
-3. **Fixed `admin.html`** — added `.catch()` on fetch, exposed `window.showMessage` / `window.loadWorksList` for `admin-edit.js`
-4. **Created `js/admin-edit.js`** — edit-work modal: `switchToDeploy()`, `editWork()`, `saveEdit()`, `closeEditModal()`
-5. **Synced user data** — `config.json` (cloudflare token), `works/works.json` (2 new works from admin panel)
-6. **Updated this file** — documented all features and architecture
-7. **Rewrote `README.md`** — comprehensive documentation with architecture overview, deployment guide, troubleshooting, design system, security notes
-
-### Why `server.py` is NOT on GitHub
-- `server.py`, `admin.html`, `*.bat`, `secrets.json` are **intentionally gitignored** (security hardening from 2025-05-20)
-- These are **local-only dev tools**, not for public hosting
-- The public site is **static HTML/CSS/JS** served by GitHub Pages — no Python server needed in production
-- `server.py` runs only on your local machine (`localhost:8000`) to manage content before publishing
-
-### Files on GitHub vs Local Only
-| File | On GitHub | Local Only | Reason |
-|------|-----------|------------|--------|
-| `index.html`, `css/`, `js/` | ✅ Yes | ✅ Yes | Public site |
-| `config.json`, `works/` | ✅ Yes | ✅ Yes | Content & config |
-| `robots.txt` | ✅ Yes | ✅ Yes | SEO |
-| `CLAUDE.md` | ✅ Yes | ✅ Yes | Project memory |
-| `server.py` | ❌ No | ✅ Yes | `.gitignore` — security |
-| `admin.html` | ❌ No | ✅ Yes | `.gitignore` — security |
-| `server.bat` | ❌ No | ✅ Yes | `.gitignore` — security |
-| `secrets.json` | ❌ No | ✅ Yes | `.gitignore` — tokens |
-
-## Alert: GitHub Pages Down
-
-- `https://tinoli.ru` returns 404 — GitHub Pages is NOT enabled for this repo
-- `https://sergiothefirst.github.io/TINOLI/` also returns 404
-- **Action required:** Enable Pages in repo Settings → Pages → Source: main branch
-- Custom domain `tinoli.ru` may also need DNS verification if previously configured
+- Web Designer skill (`C:\pro\Web Designer\web-designer`): `shoot.mjs` (scan), `matrix.mjs`
+  (Windows/Linux/HC/Firefox/WebKit/reflow), `filmstrip.mjs --live` for the embroidery.
+- Server tests: `python -m unittest discover -s tests -v`.
