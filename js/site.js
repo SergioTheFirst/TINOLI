@@ -252,7 +252,9 @@
       paras.forEach(function (p) { node.appendChild(el('p', null, typo(p))); });
     });
     var token = cfg && cfg.analytics && cfg.analytics.cloudflare_token;
-    if (token && /^[a-f0-9]{16,64}$/i.test(token) && isLiveSite()) {
+    // No third-party code runs on the monogram page: it promises that a photo never leaves the device.
+    var quiet = document.body.getAttribute('data-page') === 'monogram';
+    if (token && /^[a-f0-9]{16,64}$/i.test(token) && isLiveSite() && !quiet) {
       var s = el('script', { src: 'https://static.cloudflareinsights.com/beacon.min.js', defer: true });
       s.setAttribute('data-cf-beacon', JSON.stringify({ token: token }));
       document.body.appendChild(s);
@@ -531,8 +533,13 @@
     this.w = Math.max(1, Math.round(rect.width));
     this.h = Math.max(1, Math.round(rect.height));
     this.dpr = fixed ? 1 : Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = Math.round(this.w * this.dpr);
-    this.canvas.height = Math.round(this.h * this.dpr);
+    var cw = Math.round(this.w * this.dpr), ch = Math.round(this.h * this.dpr);
+    // A portrait redrawn while its photo is dragged keeps the backing store of its canvas.
+    var same = this.opts.mode === 'portrait' && this.ctx && this.canvas.width === cw && this.canvas.height === ch;
+    if (!same) {
+      this.canvas.width = cw;
+      this.canvas.height = ch;
+    }
     this.ctx = this.canvas.getContext('2d');
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   };
@@ -747,19 +754,218 @@
     return this.beads.length;
   };
 
+  // ---------------------------------------------------------------- portrait
+  // A photo of a person laid out in beads of four tones on velvet. The photo is a canvas
+  // kept in memory only (see loadPhoto); everything here reads it and nothing leaves.
+  var PORTRAIT_BEADS = {
+    duo: ['#6b5632', '#b89a5a', '#cfc6d2', '#f6f2f7'],
+    pearl: ['#5d5263', '#8f8496', '#c3b8c6', '#f2edf4'],
+    gold: ['#5c4a2a', '#8f7642', '#c2a868', '#efe3bf']
+  };
+  var portraitTonesMade = {};   // sprite sets by palette, radius and dpr
+
+  function clampRange(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function hexColour(hex) {
+    return [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
+  }
+
+  // One sprite per tone level (t1 darkest .. t4 lightest). Sets are kept by palette, radius and
+  // dpr, so the picture for saving does not push out the sprites of the case on the page.
+  function portraitTones(key, radius, dpr) {
+    var id = key + '|' + radius.toFixed(2) + '|' + dpr;
+    if (portraitTonesMade[id]) return portraitTonesMade[id];
+    if (Object.keys(portraitTonesMade).length >= 12) portraitTonesMade = {};
+    var set = {};
+    (PORTRAIT_BEADS[key] || PORTRAIT_BEADS.duo).forEach(function (hex, i) {
+      var body = hexColour(hex);
+      set['t' + (i + 1)] = makeToneSprite(radius, dpr, [
+        [0, rgb(mixColour(body, [255, 255, 255], 0.6))], [0.42, rgb(body)], [1, rgb(mixColour(body, [0, 0, 0], 0.38))]
+      ]);
+    });
+    portraitTonesMade[id] = set;
+    return set;
+  }
+
+  // The part of the photo that fills a box of the given proportions at a zoom, placed by
+  // px and py (0 to 1) within the room the zoom leaves.
+  function cropRect(sw, sh, aspect, view) {
+    var cw, ch;
+    if (sw / sh > aspect) { ch = sh / view.zoom; cw = ch * aspect; }
+    else { cw = sw / view.zoom; ch = cw / aspect; }
+    return { x: (sw - cw) * view.px, y: (sh - ch) * view.py, w: cw, h: ch };
+  }
+
+  // Luminance of the crop, one value per bead cell. Odd rows sit half a bead to the right,
+  // so they are read from the picture moved by a quarter cell the other way.
+  var sampleScratch = null;   // one small canvas for every sampling, so nothing piles up on a phone
+
+  function scratchContext(w, h) {
+    if (!sampleScratch) sampleScratch = document.createElement('canvas');
+    if (sampleScratch.width !== w || sampleScratch.height !== h) {
+      sampleScratch.width = w;
+      sampleScratch.height = h;
+    }
+    var g = sampleScratch.getContext('2d', { willReadFrequently: true });
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, w, h);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    return g;
+  }
+
+  function samplePortrait(source, crop, across, rows, rowsExact, top) {
+    var luma = new Float32Array(across * rows);
+    for (var parity = 0; parity < 2; parity++) {
+      var g = scratchContext(across, rows);
+      // the unmoved picture first, so the quarter cell at the edge is never empty
+      g.drawImage(source, crop.x, crop.y, crop.w, crop.h, 0, top, across, rowsExact);
+      g.drawImage(source, crop.x, crop.y, crop.w, crop.h, parity ? -0.25 : 0.25, top, across, rowsExact);
+      var px = g.getImageData(0, 0, across, rows).data;
+      for (var row = parity; row < rows; row += 2) {
+        for (var col = 0; col < across; col++) {
+          var i = (row * across + col) * 4;
+          luma[row * across + col] = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+        }
+      }
+    }
+    return luma;
+  }
+
+  // Mean over a square of the given radius (cells), the edge cell repeated beyond the edge.
+  function boxBlur(src, cols, rows, radius) {
+    var tmp = new Float32Array(src.length), out = new Float32Array(src.length);
+    var span = radius * 2 + 1, x, y, k, sum;
+    for (y = 0; y < rows; y++) {
+      for (x = 0; x < cols; x++) {
+        sum = 0;
+        for (k = -radius; k <= radius; k++) sum += src[y * cols + clampRange(x + k, 0, cols - 1)];
+        tmp[y * cols + x] = sum / span;
+      }
+    }
+    for (x = 0; x < cols; x++) {
+      for (y = 0; y < rows; y++) {
+        sum = 0;
+        for (k = -radius; k <= radius; k++) sum += tmp[clampRange(y + k, 0, rows - 1) * cols + x];
+        out[y * cols + x] = sum / span;
+      }
+    }
+    return out;
+  }
+
+  // Tone between the 3rd and 97th percentile of what is in the frame.
+  function stretchRange(values) {
+    var BINS = 512, hist = new Array(BINS), i, acc = 0, lo = 0, hi = 1;
+    for (i = 0; i < BINS; i++) hist[i] = 0;
+    for (i = 0; i < values.length; i++) hist[Math.min(BINS - 1, Math.floor(values[i] * BINS))]++;
+    var low = values.length * 0.03, high = values.length * 0.97;
+    for (i = 0; i < BINS; i++) {
+      acc += hist[i];
+      if (acc >= low) { lo = i / BINS; break; }
+    }
+    acc = 0;
+    for (i = 0; i < BINS; i++) {
+      acc += hist[i];
+      if (acc >= high) { hi = (i + 1) / BINS; break; }
+    }
+    return [lo, Math.max(hi, lo + 0.08)];
+  }
+
+  // Level 0 (bare velvet) to 4 for every cell: local contrast so that eyes, brows and mouth
+  // survive the coarse grid, a stretch of the tones in frame, the light, and a threshold
+  // pattern fixed to the grid (error diffusion would shimmer all over while the photo moves).
+  var VELVET_CUT = 0.2;    // tones darker than this are left to the velvet
+
+  function portraitLevels(luma, across, rows, light) {
+    var soft = boxBlur(luma, across, rows, Math.max(2, Math.round(across / 14)));
+    var tone = new Float32Array(luma.length), i;
+    for (i = 0; i < luma.length; i++) tone[i] = clampRange(luma[i] + 0.6 * (luma[i] - soft[i]), 0, 1);
+    var range = stretchRange(tone);
+    var gamma = 0.85 * Math.pow(2, -0.9 * light);
+    var levels = new Uint8Array(luma.length);
+    for (var row = 0; row < rows; row++) {
+      for (var col = 0; col < across; col++) {
+        i = row * across + col;
+        var l = Math.pow(clampRange((tone[i] - range[0]) / (range[1] - range[0]), 0, 1), gamma);
+        var a = 0.06711056 * col + 0.00583715 * row;
+        var noise = 52.9829189 * (a - Math.floor(a));
+        noise -= Math.floor(noise);
+        // Below the cut the velvet stays bare: a scatter of lone beads there reads as
+        // noise, not as shadow. Above it every cell holds a bead.
+        levels[i] = l < VELVET_CUT ? 0 : clampRange(Math.floor(l * 4 + noise), 1, 4);
+      }
+    }
+    return levels;
+  }
+
+  // The beads of a portrait: hexagonal rows, one bead per cell above level 0, stitched
+  // lightest first with a little noise.
+  Embroidery.prototype.buildPortrait = function () {
+    var view = this.opts.view, source = this.opts.source, across = view.across;
+    var pitch = this.w / across, rowH = pitch * 0.88;
+    var rows = Math.max(1, Math.floor(this.h / rowH)), top = (this.h - rows * rowH) / 2;
+    var crop = cropRect(source.width, source.height, this.w / this.h, view);
+    var luma = samplePortrait(source, crop, across, rows, this.h / rowH, -top / rowH);
+    var levels = portraitLevels(luma, across, rows, view.light);
+    var beads = [];
+    for (var row = 0; row < rows; row++) {
+      for (var col = 0; col < across; col++) {
+        var i = row * across + col, level = levels[i];
+        if (!level) continue;
+        var bead = sewnBead((col + (row % 2 ? 0.75 : 0.25)) * pitch, top + (row + 0.5) * rowH, pitch * 0.47, 't' + level, 0, i);
+        bead.key = (4 - level) + wobble(i, 6) * 1.2;
+        beads.push(bead);
+      }
+    }
+    beads.sort(function (a, b) { return a.key - b.key; });
+    beads.forEach(function (bead, idx) { bead.t0 = (idx / beads.length) * 2600; });
+    this.beads = beads;
+    this.gem = null;
+    this.ground = null;
+    this.endT = 3200;
+    return beads.length;
+  };
+
+  // The finished portrait at once, in a new framing, light, bead choice or size.
+  Embroidery.prototype.redraw = function (view) {
+    if (this.stopped) return false;
+    cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    this.opts.view = view;
+    var count = 0;
+    try {
+      this.measure();
+      count = this.prepare();
+    } catch (err) {
+      return false;
+    }
+    if (!count) return false;
+    this.frame(Infinity);
+    this.finished = true;
+    if (this.opts.onCount) this.opts.onCount(count);
+    return true;
+  };
+
   Embroidery.prototype.prepare = function () {
     var mode = this.opts.mode;
     var count = mode === 'mark' ? this.buildMark() : mode === 'macro' ? this.buildMacro()
-      : mode === 'monogram' ? this.buildMonogram() : this.sampleImage();
+      : mode === 'monogram' ? this.buildMonogram() : mode === 'portrait' ? this.buildPortrait() : this.sampleImage();
     if (!count) return 0;
     var maxR = 0;
     this.beads.forEach(function (bd) { if (bd.r > maxR) maxR = bd.r; });
     if (mode === 'image') this.shade = makeShadeSprite(maxR, this.dpr);
+    else if (mode === 'portrait') this.tones = portraitTones(this.opts.view.beads, maxR, this.dpr);
     else this.tones = { pearl: makeToneSprite(maxR, this.dpr, TONES.pearl), gold: makeToneSprite(maxR, this.dpr, TONES.gold) };
-    var base = document.createElement('canvas');
-    base.width = this.canvas.width;
-    base.height = this.canvas.height;
+    // The layer of finished beads is cleared and reused while the canvas keeps its size.
+    var base = this.base;
+    if (!base || base.width !== this.canvas.width || base.height !== this.canvas.height) {
+      base = document.createElement('canvas');
+      base.width = this.canvas.width;
+      base.height = this.canvas.height;
+    }
     var b = base.getContext('2d');
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.clearRect(0, 0, base.width, base.height);
     b.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (this.ground) {
       var gd = this.ground;
@@ -965,12 +1171,17 @@
     cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.stopTwinkle) this.stopTwinkle();
+    var count = 0;
     try {
+      // a portrait keeps the meaning of its size slider: the bead count is refitted to the new width
+      if (this.opts.refit) this.opts.view = this.opts.refit(this.canvas.getBoundingClientRect().width);
       this.measure();
-      if (!this.prepare()) return;
+      count = this.prepare();
     } catch (err) {
       return;
     }
+    if (!count) return;
+    if (this.opts.refit && this.opts.onCount) this.opts.onCount(count);
     this.frame(Infinity);
     var first = !this.finished;
     this.finished = true;
@@ -1590,8 +1801,10 @@
     return String(raw || '').replace(/[^A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
   }
 
-  // The monogram as a picture to keep: the velvet of the case, the medallion, the address.
-  function monogramPicture(text, done) {
+  // The case as a picture to keep: the velvet, the embroidery, the address. extra holds the
+  // embroidery's own options (its mode and what it stitches). A portrait fades into the velvet
+  // under the address, so the line reads on any photo.
+  function monogramPicture(extra, done) {
     var W = 1080, H = 1350;
     var out = document.createElement('canvas');
     out.width = W;
@@ -1603,15 +1816,184 @@
     light.addColorStop(1, '#150d17');
     g.fillStyle = light;
     g.fillRect(0, 0, W, H);
+    var opts = { still: true, size: { w: W, h: H } };
+    Object.keys(extra).forEach(function (k) { opts[k] = extra[k]; });
     var layer = document.createElement('canvas');
-    var run = new Embroidery(layer, { mode: 'monogram', text: text, still: true, size: { w: W, h: H } });
-    if (!run.run()) { done(null); return; }
+    var run = new Embroidery(layer, opts);
+    // the big canvases are emptied as soon as the file is made: a phone keeps no spare megabytes
+    var release = function () {
+      [out, layer, run.base].forEach(function (c) { if (c) { c.width = 0; c.height = 0; } });
+    };
+    if (!run.run()) { release(); done(null); return; }
     g.drawImage(layer, 0, 0);
+    if (opts.mode === 'portrait') {
+      // The line below must read on any portrait: the beads sink into velvet under it.
+      var fade = g.createLinearGradient(0, H - 260, 0, H);
+      fade.addColorStop(0, 'rgba(18,11,19,0)');
+      fade.addColorStop(0.55, 'rgba(18,11,19,.9)');
+      fade.addColorStop(1, '#120b13');
+      g.fillStyle = fade;
+      g.fillRect(0, H - 260, W, 260);
+    }
     g.fillStyle = '#9d90a1';
     g.font = '400 30px Jost, "Jost Fallback", system-ui, sans-serif';
     g.textAlign = 'center';
     g.fillText('tinoli.ru · ' + MOTTO, W / 2, H - 64);
-    out.toBlob(function (blob) { done(blob); }, 'image/png');
+    out.toBlob(function (blob) { done(blob); release(); }, 'image/png');
+  }
+
+  // ---------------------------------------------------------------- the case: two modes
+  var PORTRAIT_HASH = '#portrait';
+  var MODE_TEXT = {
+    monogram: {
+      title: 'Монограмма, вышитая бисером',
+      lead: 'Введите инициалы. Витрина вышьет их бисером, бусина за бусиной.'
+    },
+    portrait: {
+      title: 'Портрет, вышитый бисером',
+      lead: 'Выберите фото. Витрина вышьет портрет бисером, бусина за бусиной.'
+    }
+  };
+  var MARK_LABEL = 'Знак TINOLI, вышитый бисером';
+
+  function markRun(app) {
+    return { mode: 'mark', onCount: function (n) { setCaption(app.caption, markNote(n)); } };
+  }
+
+  // Starts a new embroidery in the case; the one that is still running is ended.
+  function beginRun(app, opts) {
+    if (app.run) app.run.stop();
+    app.run = new Embroidery(app.canvas, opts);
+    var ok = app.run.run();
+    app.stage.classList.toggle('is-fallback', !ok);
+    return ok;
+  }
+
+  function refreshAsk(app) {
+    if (!app.ask) return;
+    var mode = app.modes[app.mode];
+    pointTo(app.ask, (mode.ready() && mode.askHref()) || '/contact.html');
+  }
+
+  // What the tools, the label of the case and the link to the master say for the mode on show.
+  function refreshCase(app) {
+    var mode = app.modes[app.mode];
+    app.tools.hidden = !mode.ready();
+    app.clear.hidden = app.mode !== 'portrait';
+    app.save.textContent = 'Сохранить картинку';
+    app.stage.setAttribute('aria-label', mode.ready() ? mode.label() : MARK_LABEL);
+    refreshAsk(app);
+  }
+
+  function writeMode(name) {
+    var url = window.location.pathname + window.location.search + (name === 'portrait' ? PORTRAIT_HASH : '');
+    try { window.history.replaceState({}, '', url); } catch (err) { /* an address that cannot be rewritten stays */ }
+  }
+
+  // Shows one mode in the case: its words, its panel, and its state (the embroidery of the
+  // other mode is ended first).
+  function setMode(app, name, keepUrl) {
+    var mode = app.modes[name];
+    if (!mode) return;
+    app.begun = true;
+    var previous = app.modes[app.mode];
+    if (previous && previous !== mode && previous.hide) previous.hide();
+    app.mode = name;
+    app.switches.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-mode') === name ? 'true' : 'false'); });
+    app.title.textContent = typo(MODE_TEXT[name].title);
+    app.lead.textContent = typo(MODE_TEXT[name].lead);
+    app.form.hidden = name !== 'monogram';
+    if (app.panel) app.panel.hidden = name !== 'portrait';
+    app.root.classList.toggle('is-portrait', name === 'portrait');
+    if (!keepUrl) writeMode(name);
+    mode.show();
+    refreshCase(app);
+  }
+
+  // The monogram: the initials form and the medallion they are stitched into.
+  function monogramMode(app, input) {
+    var mode = { text: '', picture: null, file: 'tinoli-monogram.png' };
+    mode.ready = function () { return !!mode.text; };
+    mode.address = function () { return pageUrl() + (mode.text ? '?m=' + encodeURIComponent(mode.text) : ''); };
+    mode.shareTitle = function () { return 'Монограмма «' + mode.text + '», вышитая бисером — TINOLI'; };
+    mode.askHref = function () { return draftHref(app.channel, 'монограмме «' + mode.text + '»', mode.address()); };
+    mode.label = function () { return 'Монограмма «' + mode.text + '», вышитая бисером'; };
+    // The picture is made once the stitching has ended, or at the first call for it: the
+    // animation does not share its first frames with a second, larger embroidery.
+    mode.getPicture = function (done) {
+      if (mode.picture || !mode.text) { done(mode.picture); return; }
+      var wanted = mode.text;
+      monogramPicture({ mode: 'monogram', text: wanted }, function (blob) {
+        if (mode.text !== wanted) { done(null); return; }
+        mode.picture = blob;
+        done(blob);
+      });
+    };
+    mode.stitch = function (next) {
+      var keepRing = !!app.run && app.run.opts.mode !== 'portrait';
+      mode.text = next;
+      mode.picture = null;
+      var opts = {
+        mode: next ? 'monogram' : 'mark', text: next, keepRing: keepRing,
+        onCount: function (n) { setCaption(app.caption, next ? monogramNote(n) : markNote(n)); },
+        onDone: function () { mode.getPicture(function () {}); }
+      };
+      beginRun(app, opts);
+    };
+    mode.show = function () {
+      app.stage.classList.remove('is-framing');
+      app.stage.removeAttribute('tabindex');
+      mode.stitch(mode.text);
+    };
+    app.form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var next = initials(input.value);
+      input.value = next;
+      if (!next) { input.focus(); return; }
+      app.begun = true;
+      mode.stitch(next);
+      refreshCase(app);
+      window.history.replaceState({}, '', '?m=' + encodeURIComponent(next));
+    });
+    input.addEventListener('input', function () {
+      var clean = initials(input.value);
+      if (clean !== input.value) input.value = clean;
+    });
+    return mode;
+  }
+
+  // «Сохранить картинку»: the picture of the mode on show, handed to the browser as a file.
+  function saveCurrent(app) {
+    var mode = app.modes[app.mode];
+    mode.getPicture(function (blob) {
+      if (!blob) { app.save.textContent = 'Не удалось сохранить картинку'; return; }
+      var href = URL.createObjectURL(blob);
+      var a = el('a', { href: href, download: mode.file });
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+    });
+  }
+
+  function bindTools(app) {
+    var share = shareControl(function (done) {
+      var mode = app.modes[app.mode];
+      mode.getPicture(function (blob) {
+        var data = { title: mode.shareTitle(), url: mode.address() };
+        if (blob && typeof File === 'function') data.files = [new File([blob], mode.file, { type: 'image/png' })];
+        done(data);
+      });
+    });
+    if (share) app.tools.insertBefore(share, app.clear);
+    app.save.addEventListener('click', function () { saveCurrent(app); });
+    app.switches.forEach(function (b) {
+      b.addEventListener('click', function () { setMode(app, b.getAttribute('data-mode')); });
+    });
+    window.addEventListener('hashchange', function () {
+      var name = window.location.hash === PORTRAIT_HASH ? 'portrait' : 'monogram';
+      if (name !== app.mode) setMode(app, name, true);
+    });
   }
 
   // The monogram page. Returns a setter for the channel «Написать мастеру» opens, which
@@ -1621,95 +2003,434 @@
     var form = document.querySelector('[data-monogram-form]');
     var tools = document.querySelector('[data-monogram-tools]');
     if (!root || !form || !tools) return null;
-    var stage = root.querySelector('.vitrine');
-    var canvas = root.querySelector('.embroidery');
-    var caption = root.querySelector('[data-hero-caption]');
+    var app = {
+      root: root, form: form, tools: tools, panel: document.querySelector('[data-portrait]'),
+      stage: root.querySelector('.vitrine'), canvas: root.querySelector('.embroidery'),
+      caption: root.querySelector('[data-hero-caption]'),
+      save: tools.querySelector('[data-monogram-save]'), clear: tools.querySelector('[data-portrait-clear]'),
+      ask: document.querySelector('[data-monogram-ask]'),
+      title: document.getElementById('mono-title'), lead: document.querySelector('.hero__lead'),
+      switches: [].slice.call(document.querySelectorAll('[data-mode]')),
+      run: null, channel: null, mode: 'monogram', modes: {}, begun: false
+    };
     var input = form.querySelector('input');
-    var save = tools.querySelector('[data-monogram-save]');
-    var ask = document.querySelector('[data-monogram-ask]');
-    var run = null, text = '', picture = null, channel = null;
-
-    function address() { return pageUrl() + (text ? '?m=' + encodeURIComponent(text) : ''); }
-    function refreshAsk() {
-      if (!ask) return;
-      pointTo(ask, (text && draftHref(channel, 'монограмме «' + text + '»', address())) || '/contact.html');
-    }
-    // The picture is made once the stitching has ended, or at the first call for it: the
-    // animation does not share its first frames with a second, larger embroidery.
-    function withPicture(done) {
-      if (picture || !text) { done(picture); return; }
-      var wanted = text;
-      monogramPicture(wanted, function (blob) {
-        if (text !== wanted) { done(null); return; }
-        picture = blob;
-        done(blob);
-      });
-    }
-    function stitch(next) {
-      var keepRing = !!run;
-      if (run) run.stop();
-      text = next;
-      picture = null;
-      tools.hidden = !text;
-      save.textContent = 'Сохранить картинку';
-      stage.setAttribute('aria-label', text ? 'Монограмма «' + text + '», вышитая бисером' : 'Знак TINOLI, вышитый бисером');
-      run = new Embroidery(canvas, {
-        mode: text ? 'monogram' : 'mark', text: text, keepRing: keepRing,
-        onCount: function (n) { setCaption(caption, text ? monogramNote(n) : markNote(n)); },
-        onDone: function () { withPicture(function () {}); }
-      });
-      if (!run.run()) stage.classList.add('is-fallback');
-      refreshAsk();
-    }
-
-    var share = shareControl(function (done) {
-      withPicture(function (blob) {
-        var data = { title: 'Монограмма «' + text + '», вышитая бисером — TINOLI', url: address() };
-        if (blob && typeof File === 'function') data.files = [new File([blob], 'tinoli-monogram.png', { type: 'image/png' })];
-        done(data);
-      });
-    });
-    if (share) tools.appendChild(share);
-    save.addEventListener('click', function () {
-      withPicture(function (blob) {
-        if (!blob) { save.textContent = 'Не удалось сохранить картинку'; return; }
-        var href = URL.createObjectURL(blob);
-        var a = el('a', { href: href, download: 'tinoli-monogram.png' });
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
-      });
-    });
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var next = initials(input.value);
-      input.value = next;
-      if (!next) { input.focus(); return; }
-      stitch(next);
-      window.history.replaceState({}, '', '?m=' + encodeURIComponent(next));
-    });
-    input.addEventListener('input', function () {
-      var clean = initials(input.value);
-      if (clean !== input.value) input.value = clean;
-    });
+    app.modes.monogram = monogramMode(app, input);
+    if (app.panel) app.modes.portrait = portraitMode(app, app.panel);
+    bindTools(app);
+    var group = document.querySelector('[data-mode-switch]');
+    if (group && app.modes.portrait) group.hidden = false;
 
     var first = initials(new URLSearchParams(window.location.search).get('m'));
     input.value = first;
+    app.modes.monogram.text = first;
+    var name = app.modes.portrait && window.location.hash === PORTRAIT_HASH ? 'portrait' : 'monogram';
     // The letters are sampled from the site's font: wait for both of its alphabets.
     // A font that is slow to come must not leave the case empty: after 2.5 s the letters
-    // are sampled from whatever the browser has.
-    var begun = false;
-    var begin = function () {
-      if (begun) return;
-      begun = true;
-      stitch(first);
-    };
-    if (document.fonts && document.fonts.load) {
+    // are sampled from whatever the browser has. A portrait has no letters to wait for.
+    var begin = function () { if (!app.begun) setMode(app, name, true); };
+    if (name === 'monogram' && document.fonts && document.fonts.load) {
       document.fonts.load('500 100px Jost', 'AЯ').then(begin, begin);
       setTimeout(begin, 2500);
     } else begin();
-    return function (found) { channel = found || null; refreshAsk(); };
+    return function (found) { app.channel = found || null; refreshAsk(app); };
+  }
+
+  // ---------------------------------------------------------------- bead portrait
+  // The photo is read in the visitor's browser into a canvas kept in memory, and nothing else
+  // is done with it: no request, no storage. It is dropped by «Убрать фото» or with the page.
+  var PHOTO_SIDE = 1600;       // the longest side of the working canvas
+  var PHOTO_MAX_BYTES = 40 * 1024 * 1024;
+  var PHOTO_MAX_PIXELS = 80 * 1000 * 1000;
+  var PHOTO_TOO_BIG = 'Это фото слишком большое. Выберите другое.';
+  var HOLD_MS = 300;           // a press this long shows the photo itself
+  var HOLD_SLOP = 3;           // px a mouse press may move and still be a hold; a finger or pen may move more
+  var HOLD_SLOP_TOUCH = 8;
+  var NUDGE = 0.03;            // a key moves the photo by this part of its free room
+  var PHOTO_ERROR = 'Не удалось открыть это фото. Выберите другое.';
+
+  function merge(base, changes) {
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    Object.keys(changes).forEach(function (k) { out[k] = changes[k]; });
+    return out;
+  }
+
+  function portraitNote(n) {
+    return typo('Портрет вышит из ' + formatCount(n) + ' ' + plural(n, 'бусины', 'бусин', 'бусин') + '.');
+  }
+
+  // Beads across the case: from large to small, by the width of the case.
+  function acrossRange(width) { return { min: Math.round(width / 9), max: Math.round(width / 4.4) }; }
+
+  function acrossFor(width, size) {
+    var r = acrossRange(width);
+    return Math.round(r.max - clampRange(size, 0, 1) * (r.max - r.min));
+  }
+
+  // The slider position (0 small beads .. 1 large) that gives the starting count.
+  function startSize(width) {
+    var r = acrossRange(width);
+    var start = clampRange(Math.round(width / 6.2), r.min, r.max);
+    return (r.max - start) / Math.max(1, r.max - r.min);
+  }
+
+  function freshView(beads, size) {
+    return { zoom: 1, px: 0.5, py: 0.42, light: 0, size: size, across: 0, beads: beads };
+  }
+
+  // The chosen file into a canvas of at most PHOTO_SIDE px, the object URL revoked at once.
+  // The browser applies the photo's orientation. done(null) when it is not a picture, and
+  // done(null, text) when it is too big to open on a phone.
+  function loadPhoto(file, done) {
+    if (!file || (file.type && file.type.indexOf('image/') !== 0)) { done(null); return; }
+    if (file.size > PHOTO_MAX_BYTES) { done(null, PHOTO_TOO_BIG); return; }
+    var url = null;
+    try { url = URL.createObjectURL(file); } catch (err) { done(null); return; }
+    var im = new Image();
+    im.onload = function () {
+      URL.revokeObjectURL(url);
+      var nw = im.naturalWidth, nh = im.naturalHeight;
+      if (!nw || !nh) { done(null); return; }
+      if (nw * nh > PHOTO_MAX_PIXELS) { done(null, PHOTO_TOO_BIG); return; }
+      var k = Math.min(1, PHOTO_SIDE / Math.max(nw, nh));
+      var work = document.createElement('canvas');
+      work.width = Math.max(1, Math.round(nw * k));
+      work.height = Math.max(1, Math.round(nh * k));
+      try {
+        // kept in software: it is read again at every change, and a copy from the graphics card each time is slow
+        var g = work.getContext('2d', { willReadFrequently: true });
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(im, 0, 0, work.width, work.height);
+      } catch (err) {
+        done(null);
+        return;
+      }
+      done(work);
+    };
+    im.onerror = function () { URL.revokeObjectURL(url); done(null); };
+    im.src = url;
+  }
+
+  function releaseCanvas(canvas) {
+    if (canvas) { canvas.width = 0; canvas.height = 0; }
+  }
+
+  function caseWidth(m) { return Math.max(120, m.app.canvas.getBoundingClientRect().width); }
+
+  function sayPortrait(m, text) { m.error.textContent = text ? typo(text) : ''; }
+
+  function syncControls(m) {
+    if (!m.photo) return;
+    Object.keys(m.sliders).forEach(function (k) { m.sliders[k].value = String(m.view[k]); });
+    m.beadButtons.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-beads') === m.view.beads ? 'true' : 'false');
+    });
+  }
+
+  // The panel and the case as they are with a photo in them, or without one.
+  function portraitFrame(m) {
+    var has = !!m.photo, stage = m.app.stage;
+    m.controls.hidden = !has;
+    m.pick.textContent = has ? 'Выбрать другое фото' : 'Выбрать фото';
+    stage.classList.toggle('is-framing', has);
+    if (has) {
+      stage.setAttribute('tabindex', '0');
+      stage.setAttribute('aria-describedby', 'portrait-hint');
+    } else {
+      stage.removeAttribute('tabindex');
+      stage.removeAttribute('aria-describedby');
+    }
+    syncControls(m);
+  }
+
+  // The embroidery's options for the portrait as it stands.
+  function portraitRun(m, still) {
+    return {
+      mode: 'portrait', source: m.photo, view: m.view, still: still,
+      refit: function (width) {
+        m.view = merge(m.view, { across: acrossFor(Math.max(120, width), m.view.size) });
+        m.picture = null;
+        queuePicture(m);
+        return m.view;
+      },
+      onCount: function (n) {
+        if (n === m.count) return;
+        m.count = n;
+        setCaption(m.app.caption, portraitNote(n));
+      },
+      onDone: function () { queuePicture(m); }
+    };
+  }
+
+  // Lays the portrait out: stitched when animate, otherwise the finished one at once.
+  function portraitRender(m, animate) {
+    var app = m.app, run = app.run;
+    cancelAnimationFrame(m.frame);
+    m.frame = 0;
+    m.picture = null;
+    m.view = merge(m.view, { across: acrossFor(caseWidth(m), m.view.size) });
+    var ok, t0 = performance.now();
+    if (!animate && run && run.opts.mode === 'portrait' && !run.stopped) {
+      ok = run.redraw(m.view);
+    } else {
+      m.count = 0;
+      ok = beginRun(app, portraitRun(m, !animate));
+    }
+    if (!ok) { portraitClear(m); sayPortrait(m, PHOTO_ERROR); return; }
+    m.lastAt = performance.now();
+    m.cost = animate ? 0 : m.lastAt - t0;
+    queuePicture(m);
+  }
+
+  // Changes pile up until the next animation frame: one redraw for any number of events.
+  // A redraw that took longer than a frame is followed by a pause twice as long as it took.
+  function portraitChange(m, changes) {
+    m.view = merge(m.view, changes);
+    if (m.frame) return;
+    var tick = function () {
+      m.frame = 0;
+      if (!m.photo) return;
+      if (m.cost > 16 && performance.now() < m.lastAt + 2 * m.cost) { m.frame = requestAnimationFrame(tick); return; }
+      portraitRender(m, false);
+    };
+    m.frame = requestAnimationFrame(tick);
+  }
+
+  // The picture for saving is made after 1.5 s without changes, once the stitching is over.
+  function queuePicture(m) {
+    clearTimeout(m.saveTimer);
+    m.saveTimer = setTimeout(function () {
+      if (!m.photo) return;
+      if (m.app.run && !m.app.run.finished) { queuePicture(m); return; }
+      portraitPicture(m, function () {});
+    }, 1500);
+  }
+
+  function portraitPicture(m, done) {
+    if (m.picture || !m.photo) { done(m.picture); return; }
+    var wanted = m.view;
+    monogramPicture({ mode: 'portrait', source: m.photo, view: wanted }, function (blob) {
+      if (m.view !== wanted) { portraitPicture(m, done); return; }
+      m.picture = blob;
+      done(blob);
+    });
+  }
+
+  function drawPhotoView(m) {
+    var rect = m.app.canvas.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    var c = m.shown;
+    c.width = Math.max(1, Math.round(rect.width * dpr));
+    c.height = Math.max(1, Math.round(rect.height * dpr));
+    var crop = cropRect(m.photo.width, m.photo.height, rect.width / rect.height, m.view);
+    var g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(m.photo, crop.x, crop.y, crop.w, crop.h, 0, 0, c.width, c.height);
+  }
+
+  // Press and hold: the cropped photo instead of the beads, until the press ends.
+  function peek(m, on) {
+    if (m.peeking === on) return;
+    m.peeking = on;
+    if (on && m.photo) drawPhotoView(m);
+    m.app.stage.classList.toggle('is-peek', on);
+  }
+
+  // The photo follows the pointer: dx, dy in screen px.
+  function panPhoto(m, dx, dy) {
+    var rect = m.app.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    var crop = cropRect(m.photo.width, m.photo.height, rect.width / rect.height, m.view);
+    var freeX = m.photo.width - crop.w, freeY = m.photo.height - crop.h;
+    portraitChange(m, {
+      px: freeX > 0.5 ? clampRange(m.view.px - dx * crop.w / rect.width / freeX, 0, 1) : m.view.px,
+      py: freeY > 0.5 ? clampRange(m.view.py - dy * crop.h / rect.height / freeY, 0, 1) : m.view.py
+    });
+  }
+
+  function endPress(m) {
+    clearTimeout(m.holdTimer);
+    m.drag = null;
+    peek(m, false);
+  }
+
+  function bindPress(m) {
+    var stage = m.app.stage;
+    stage.addEventListener('pointerdown', function (e) {
+      if (!m.photo || m.app.mode !== 'portrait' || !e.isPrimary || m.drag) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      m.drag = {
+        id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moving: false,
+        slop: e.pointerType === 'mouse' ? HOLD_SLOP : HOLD_SLOP_TOUCH
+      };
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* a pointer that cannot be captured still works */ }
+      clearTimeout(m.holdTimer);
+      m.holdTimer = setTimeout(function () { if (m.drag && !m.drag.moving) peek(m, true); }, HOLD_MS);
+    });
+    stage.addEventListener('pointermove', function (e) {
+      var d = m.drag;
+      if (!d || d.id !== e.pointerId || m.peeking) return;
+      if (!d.moving) {
+        if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < d.slop) return;
+        d.moving = true;
+        clearTimeout(m.holdTimer);
+      }
+      panPhoto(m, e.clientX - d.x, e.clientY - d.y);
+      d.x = e.clientX;
+      d.y = e.clientY;
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
+      stage.addEventListener(type, function (e) { if (m.drag && m.drag.id === e.pointerId) endPress(m); });
+    });
+    stage.addEventListener('contextmenu', function (e) { if (m.photo && m.app.mode === 'portrait') e.preventDefault(); });
+  }
+
+  // Arrow keys move the photo when the case has focus; holding Space shows the photo itself.
+  function bindKeys(m) {
+    var stage = m.app.stage;
+    var isSpace = function (e) { return e.key === ' ' || e.key === 'Spacebar'; };
+    stage.addEventListener('keyup', function (e) { if (isSpace(e)) peek(m, false); });
+    stage.addEventListener('blur', function () { peek(m, false); });
+    stage.addEventListener('keydown', function (e) {
+      if (!m.photo || e.target !== stage) return;
+      if (isSpace(e)) { e.preventDefault(); peek(m, true); return; }
+      var dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+      var dy = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+      if (!dx && !dy) return;
+      e.preventDefault();
+      portraitChange(m, {
+        px: clampRange(m.view.px - dx * NUDGE, 0, 1),
+        py: clampRange(m.view.py - dy * NUDGE, 0, 1)
+      });
+    });
+  }
+
+  function openPhoto(m, file) {
+    var id = ++m.loadId;
+    loadPhoto(file, function (work, message) {
+      if (id !== m.loadId) { releaseCanvas(work); return; }   // a newer choice or a removal came meanwhile
+      if (!work) { sayPortrait(m, message || PHOTO_ERROR); return; }
+      sayPortrait(m, '');
+      releaseCanvas(m.photo);
+      m.photo = work;
+      m.view = freshView(m.view.beads, m.view.size === null ? startSize(caseWidth(m)) : m.view.size);
+      if (m.app.mode !== 'portrait') return;
+      portraitFrame(m);
+      portraitRender(m, true);
+      refreshCase(m.app);
+    });
+  }
+
+  // «Убрать фото»: the working canvas, both canvases of the case and the file input are
+  // emptied, and the case goes back to the plain mark.
+  function portraitClear(m) {
+    var app = m.app;
+    m.loadId++;
+    endPress(m);
+    clearTimeout(m.saveTimer);
+    cancelAnimationFrame(m.frame);
+    m.frame = 0;
+    // the mark's embroidery sizes the canvas anew, which empties what the portrait left on it
+    beginRun(app, markRun(app));
+    releaseCanvas(m.photo);
+    releaseCanvas(m.shown);
+    m.photo = null;
+    m.picture = null;
+    m.count = 0;
+    m.view = freshView(m.view.beads, m.view.size);
+    m.input.value = '';
+    portraitFrame(m);
+    refreshCase(app);
+    m.input.focus();
+  }
+
+  function portraitShow(m) {
+    m.count = 0;
+    portraitFrame(m);
+    if (m.photo) portraitRender(m, false);
+    else beginRun(m.app, markRun(m.app));
+  }
+
+  function portraitHide(m) {
+    endPress(m);
+    clearTimeout(m.saveTimer);
+    cancelAnimationFrame(m.frame);
+    m.frame = 0;
+    m.app.stage.classList.remove('is-drop');
+  }
+
+  function bindPicker(m) {
+    var stage = m.app.stage;
+    m.input.addEventListener('change', function () {
+      var file = m.input.files && m.input.files[0];
+      if (file) openPhoto(m, file);
+      m.input.value = '';
+    });
+    // A photo can be dropped on the case; the browser never opens it as a page.
+    ['dragenter', 'dragover'].forEach(function (type) {
+      stage.addEventListener(type, function (e) {
+        e.preventDefault();
+        if (m.app.mode === 'portrait') stage.classList.add('is-drop');
+      });
+    });
+    stage.addEventListener('dragleave', function () { stage.classList.remove('is-drop'); });
+    stage.addEventListener('drop', function (e) {
+      e.preventDefault();
+      stage.classList.remove('is-drop');
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (m.app.mode === 'portrait' && files && files.length) openPhoto(m, files[0]);
+    });
+  }
+
+  function bindControls(m, panel) {
+    [].slice.call(panel.querySelectorAll('[data-slider]')).forEach(function (input) {
+      var key = input.getAttribute('data-slider');
+      m.sliders[key] = input;
+      input.addEventListener('input', function () {
+        var v = parseFloat(input.value), change = {};
+        if (isNaN(v)) return;
+        change[key] = v;
+        portraitChange(m, change);
+      });
+    });
+    m.beadButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var key = b.getAttribute('data-beads');
+        if (!m.photo || key === m.view.beads) return;
+        m.view = merge(m.view, { beads: key });
+        syncControls(m);
+        portraitRender(m, true);
+      });
+    });
+  }
+
+  // The portrait: a photo chosen on the device, laid out in beads, moved and lit in the case.
+  function portraitMode(app, panel) {
+    var m = {
+      app: app, photo: null, view: freshView('duo', null), picture: null, count: 0,
+      frame: 0, saveTimer: 0, holdTimer: 0, drag: null, peeking: false, sliders: {},
+      loadId: 0, cost: 0, lastAt: 0,
+      input: panel.querySelector('[data-portrait-file]'), pick: panel.querySelector('[data-portrait-pick]'),
+      error: panel.querySelector('[data-portrait-error]'), controls: panel.querySelector('[data-portrait-controls]'),
+      beadButtons: [].slice.call(panel.querySelectorAll('[data-beads]')),
+      shown: el('canvas', { className: 'photoview', 'aria-hidden': 'true' })
+    };
+    app.stage.insertBefore(m.shown, app.canvas);
+    bindPicker(m);
+    bindControls(m, panel);
+    bindPress(m);
+    bindKeys(m);
+    app.clear.addEventListener('click', function () { portraitClear(m); });
+    return {
+      file: 'tinoli-portrait.png',
+      label: function () { return 'Портрет, вышитый бисером'; },
+      ready: function () { return !!m.photo; },
+      address: function () { return pageUrl() + PORTRAIT_HASH; },
+      shareTitle: function () { return 'Портрет, вышитый бисером — TINOLI'; },
+      askHref: function () { return draftHref(app.channel, 'портрете бисером', pageUrl() + PORTRAIT_HASH); },
+      getPicture: function (done) { portraitPicture(m, done); },
+      show: function () { portraitShow(m); },
+      hide: function () { portraitHide(m); }
+    };
   }
 
   // ---------------------------------------------------------------- the way to the monogram

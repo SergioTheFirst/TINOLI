@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Монограмма бисером — TINOLI</title>
-<meta name="description" content="Введите инициалы и посмотрите, как их вышивают бисером и кристаллами.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'inline-speculation-rules'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Монограмма и портрет бисером — TINOLI</title>
+<meta name="description" content="Введите инициалы или выберите фото и посмотрите, как их вышивают бисером и кристаллами.">
 <link rel="canonical" href="https://tinoli.ru/monogram.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TINOLI">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:title" content="Монограмма бисером — TINOLI">
-<meta property="og:description" content="Введите инициалы и посмотрите, как их вышивают бисером и кристаллами.">
+<meta property="og:title" content="Монограмма и портрет бисером — TINOLI">
+<meta property="og:description" content="Введите инициалы или выберите фото и посмотрите, как их вышивают бисером и кристаллами.">
 <meta property="og:url" content="https://tinoli.ru/monogram.html">
 <meta property="og:image" content="https://tinoli.ru/og.png">
 <meta property="og:image:width" content="1200">
@@ -55,6 +56,10 @@
         </div>
       </div>
       <div class="hero__copy">
+        <div class="kinds mono__mode" role="group" aria-label="Что вышить" data-mode-switch hidden>
+          <button type="button" aria-pressed="true" data-mode="monogram">Монограмма</button>
+          <button type="button" aria-pressed="false" data-mode="portrait">Портрет</button>
+        </div>
         <h1 class="hero__title display" id="mono-title">Монограмма, вышитая бисером</h1>
         <p class="hero__lead">Введите инициалы. Витрина вышьет их бисером, бусина за бусиной.</p>
         <form class="mono" data-monogram-form novalidate>
@@ -64,8 +69,30 @@
             <button class="btn" type="submit">Вышить</button>
           </div>
         </form>
+        <div class="portrait" data-portrait hidden>
+          <div class="portrait__pick">
+            <input class="portrait__file visually-hidden" id="portrait-file" type="file" accept="image/*" data-portrait-file>
+            <label class="btn" for="portrait-file" data-portrait-pick>Выбрать фото</label>
+          </div>
+          <p class="portrait__privacy">Фото остаётся на вашем устройстве: сайт его не получает и не хранит. Это можно проверить: отключите интернет, и портрет вышьется так же.</p>
+          <p class="portrait__error" role="status" data-portrait-error></p>
+          <div class="portrait__controls" data-portrait-controls hidden>
+            <div class="kinds portrait__beads" role="group" aria-label="Бисер">
+              <button type="button" aria-pressed="true" data-beads="duo">Жемчуг и золото</button>
+              <button type="button" aria-pressed="false" data-beads="pearl">Жемчуг</button>
+              <button type="button" aria-pressed="false" data-beads="gold">Золото</button>
+            </div>
+            <div class="portrait__sliders">
+              <label class="slider"><span class="slider__name">Кадр</span><input type="range" min="1" max="3" step="0.01" value="1" data-slider="zoom"></label>
+              <label class="slider"><span class="slider__name">Свет</span><input type="range" min="-1" max="1" step="0.01" value="0" data-slider="light"></label>
+              <label class="slider"><span class="slider__name">Размер бисера</span><input type="range" min="0" max="1" step="0.01" value="0.5" data-slider="size"></label>
+            </div>
+            <p class="portrait__hint" id="portrait-hint">Двигайте фото в витрине. Нажмите и держите, чтобы увидеть снимок.<span class="visually-hidden"> С клавиатуры: стрелки двигают фото, пробел показывает снимок.</span></p>
+          </div>
+        </div>
         <div class="mono__tools" data-monogram-tools hidden>
           <button class="textbtn" type="button" data-monogram-save>Сохранить картинку</button>
+          <button class="textbtn" type="button" data-portrait-clear hidden>Убрать фото</button>
         </div>
         <p class="note">Это рисунок на экране. Настоящую вышивку мастер делает вручную.</p>
         <p class="mono__ask"><a class="link" href="/contact.html" data-monogram-ask>Написать мастеру</a></p>
