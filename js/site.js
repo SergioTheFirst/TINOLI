@@ -1100,8 +1100,6 @@
     }
     var note = document.querySelector('[data-hero-note]');
     if (note) note.hidden = false;
-    var mono = document.querySelector('[data-hero-mono]');
-    if (mono) mono.hidden = false;
   }
 
   // failed: the catalogue could not be loaded. The mark is stitched all the same, but the
@@ -1714,6 +1712,80 @@
     return function (found) { channel = found || null; refreshAsk(); };
   }
 
+  // ---------------------------------------------------------------- the way to the monogram
+  // The invitation is the thing itself in small: the ring of the mark with a letter in it.
+  // The letter changes for twelve seconds once the link is in view and for as long as it
+  // is hovered or focused; then it rests on the first one.
+  var SAMPLE_LETTERS = ['А', 'М', 'Е', 'К'];
+
+  // The mark as on the 404 page: eleven beads round a centre, the crystal in the twelfth place.
+  function markRing() {
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 64 64');
+    svg.setAttribute('focusable', 'false');
+    for (var i = 1; i <= 11; i++) {
+      var a = -Math.PI / 2 + Math.PI * 2 * i / 12;
+      var bead = document.createElementNS(NS, 'circle');
+      bead.setAttribute('cx', (32 + 19.7 * Math.cos(a)).toFixed(1));
+      bead.setAttribute('cy', (33 + 19.7 * Math.sin(a)).toFixed(1));
+      bead.setAttribute('r', '3.3');
+      bead.style.animationDelay = (i * 35) + 'ms';
+      svg.appendChild(bead);
+    }
+    var gem = document.createElementNS(NS, 'path');
+    gem.setAttribute('d', 'M32 6.7L37.1 13.3L32 19.9L26.9 13.3Z');
+    svg.appendChild(gem);
+    return svg;
+  }
+
+  function initMonoLinks() {
+    document.querySelectorAll('.monolink').forEach(function (link) {
+      var ring = el('span', { className: 'monolink__ring', 'aria-hidden': 'true' });
+      ring.appendChild(markRing());
+      var letters = SAMPLE_LETTERS.map(function (ch, i) {
+        var letter = el('b', { className: i ? null : 'is-on' }, ch);
+        ring.appendChild(letter);
+        return letter;
+      });
+      link.insertBefore(ring, link.firstChild);
+      if (reduceMotion.matches) return;
+
+      var at = 0, timer = 0, held = false, until = 0;
+      var show = function (n) {
+        at = n % letters.length;
+        letters.forEach(function (letter, i) { letter.classList.toggle('is-on', i === at); });
+      };
+      var tick = function () {
+        if (!held && Date.now() > until) { timer = 0; show(0); return; }
+        show(at + 1);
+        timer = setTimeout(tick, 2400);
+      };
+      var play = function (ms) {
+        until = Math.max(until, Date.now() + ms);
+        if (!timer) timer = setTimeout(tick, 1600);
+      };
+      // Hovered and focused are kept apart: the pointer leaving must not stop a focused link.
+      var over = false, focused = false;
+      var hold = function () {
+        held = over || focused;
+        if (held) play(0);
+      };
+      link.addEventListener('pointerenter', function () { over = true; hold(); });
+      link.addEventListener('pointerleave', function () { over = false; hold(); });
+      link.addEventListener('focus', function () { focused = true; hold(); });
+      link.addEventListener('blur', function () { focused = false; hold(); });
+      // Without a way to know the link is in view, the letters change only under a pointer or focus.
+      if (!('IntersectionObserver' in window)) return;
+      var seen = new IntersectionObserver(function (entries) {
+        if (!entries[entries.length - 1].isIntersecting) return;
+        seen.disconnect();
+        play(12000);
+      }, { threshold: 0.6 });
+      seen.observe(link);
+    });
+  }
+
   // ---------------------------------------------------------------- boot
   // The browser jumped to #works on the page as it was before the catalogue came;
   // once the hero and the grid are final, land there again.
@@ -1736,6 +1808,7 @@
     initHeader();
     initMacroStages();
     initPrefetch();
+    initMonoLinks();
     var page = document.body.getAttribute('data-page');
     var monogramChannel = page === 'monogram' ? initMonogram() : null;
 
