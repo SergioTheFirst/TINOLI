@@ -525,6 +525,8 @@
     this.twinkleDone = false;
     this.gemAt = 420;        // ms at which the crystal is set
     this.gemFrom = 0;        // ms at which it starts to grow (a hallmark's crystal comes late)
+    this.letter = null;      // the handwritten T of a portrait's hallmark
+    this.letterMissing = false;
   }
 
   Embroidery.prototype.measure = function () {
@@ -793,8 +795,9 @@
   }
 
   // The hallmark: a miniature of the mark (eleven beads round a centre, the crystal in the
-  // twelfth place) stitched into the upper right corner of every portrait, on a small round
-  // window of bare velvet. Sprites are kept by radius and dpr, like the portrait's.
+  // twelfth place) stitched into the upper left corner of every portrait, on a small round
+  // window of bare velvet, with a handwritten T inside the ring. Sprites are kept by radius
+  // and dpr, like the portrait's.
   var hallmarkTonesMade = {};
 
   function hallmarkTones(radius, dpr) {
@@ -806,8 +809,8 @@
   }
 
   function hallmarkGeometry(w) {
-    var r = clampRange(w * 0.034, 13, 40), inset = Math.max(w * 0.085, r * 2.3);
-    return { r: r, cx: w - inset, cy: inset };
+    var r = clampRange(w * 0.042, 15, 46), inset = Math.max(w * 0.095, r * 2.3);
+    return { r: r, cx: inset, cy: inset };
   }
 
   // The part of the photo that fills a box of the given proportions at a zoom, placed by
@@ -899,17 +902,69 @@
   // pattern fixed to the grid (error diffusion would shimmer all over while the photo moves).
   var VELVET_CUT = 0.2;    // tones darker than this are left to the velvet
 
-  function portraitLevels(luma, across, rows, light) {
+  // In one colour a cell holds a bead or nothing, and a bead with fewer than two of its six
+  // neighbours is taken out. Odd rows sit half a bead to the right: their neighbours in the
+  // rows above and below are col and col + 1, for even rows col - 1 and col.
+  function thinLoners(levels, across, rows) {
+    var out = new Uint8Array(levels);
+    var at = function (row, col) { return row >= 0 && row < rows && col >= 0 && col < across && levels[row * across + col] ? 1 : 0; };
+    for (var row = 0; row < rows; row++) {
+      var lo = row % 2 ? 0 : -1;
+      for (var col = 0; col < across; col++) {
+        if (!levels[row * across + col]) continue;
+        var n = at(row, col - 1) + at(row, col + 1) + at(row - 1, col + lo) + at(row - 1, col + lo + 1) +
+          at(row + 1, col + lo) + at(row + 1, col + lo + 1);
+        if (n < 2) out[row * across + col] = 0;
+      }
+    }
+    return out;
+  }
+
+  // Where a one-colour portrait is cut in two: a little under the usual tone of the middle
+  // of the frame, where the face is, so that the face is beads and its eyes, brows and mouth
+  // are velvet, whatever stands behind it or below it.
+  function middleCut(flat, across, rows) {
+    var BINS = 64, hist = [], count = 0, i;
+    for (i = 0; i < BINS; i++) hist[i] = 0;
+    var x0 = Math.floor(across * 0.22), x1 = Math.ceil(across * 0.78);
+    var y0 = Math.floor(rows * 0.17), y1 = Math.ceil(rows * 0.73);
+    for (var row = y0; row < y1; row++) {
+      for (var col = x0; col < x1; col++) {
+        hist[Math.min(BINS - 1, Math.floor(flat[row * across + col] * BINS))]++;
+        count++;
+      }
+    }
+    var under = count * 0.35, seen = 0;
+    for (i = 0; i < BINS - 1; i++) {
+      seen += hist[i];
+      if (seen >= under) break;
+    }
+    return clampRange((i + 0.5) / BINS, 0.3, 0.6);
+  }
+
+  function portraitLevels(luma, across, rows, light, one) {
     var soft = boxBlur(luma, across, rows, Math.max(2, Math.round(across / 14)));
-    var tone = new Float32Array(luma.length), i;
-    for (i = 0; i < luma.length; i++) tone[i] = clampRange(luma[i] + 0.6 * (luma[i] - soft[i]), 0, 1);
+    var tone = new Float32Array(luma.length), i, boost = one ? 1.1 : 0.6;
+    for (i = 0; i < luma.length; i++) tone[i] = clampRange(luma[i] + boost * (luma[i] - soft[i]), 0, 1);
     var range = stretchRange(tone);
     var gamma = 0.85 * Math.pow(2, -0.9 * light);
     var levels = new Uint8Array(luma.length);
+    var cut = 0;
+    if (one) {
+      // the cut is found before the light is applied, so the slider «Свет» moves the tones past it
+      var flat = new Float32Array(luma.length);
+      for (i = 0; i < luma.length; i++) flat[i] = clampRange((tone[i] - range[0]) / (range[1] - range[0]), 0, 1);
+      cut = Math.pow(middleCut(flat, across, rows), 0.85) * 0.75 + 0.125;
+    }
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < across; col++) {
         i = row * across + col;
         var l = Math.pow(clampRange((tone[i] - range[0]) / (range[1] - range[0]), 0, 1), gamma);
+        if (one) {
+          var local = clampRange(0.5 + (luma[i] - soft[i]) * 2.2, 0, 1);
+          levels[i] = l * 0.75 + local * 0.25 >= cut ? 4 : 0;
+          continue;
+        }
         var a = 0.06711056 * col + 0.00583715 * row;
         var noise = 52.9829189 * (a - Math.floor(a));
         noise -= Math.floor(noise);
@@ -921,30 +976,47 @@
     return levels;
   }
 
+  // The round window of the hallmark: no bead of the portrait stands in it.
+  function emptyWindow(levels, grid, hall) {
+    var reach = hall.r * 1.62 + grid.pitch * 0.47;
+    var lastRow = Math.min(grid.rows, Math.ceil((hall.cy + reach - grid.top) / grid.rowH));
+    var lastCol = Math.min(grid.across, Math.ceil((hall.cx + reach) / grid.pitch));
+    for (var row = 0; row < lastRow; row++) {
+      for (var col = 0; col < lastCol; col++) {
+        var dx = (col + (row % 2 ? 0.75 : 0.25)) * grid.pitch - hall.cx, dy = grid.top + (row + 0.5) * grid.rowH - hall.cy;
+        if (dx * dx + dy * dy < reach * reach) levels[row * grid.across + col] = 0;
+      }
+    }
+  }
+
   // The beads of a portrait: hexagonal rows, one bead per cell above level 0, stitched
-  // lightest first with a little noise.
+  // lightest first with a little noise. In one colour every bead is the same: the lightest
+  // tone of pearl, the third of gold.
   Embroidery.prototype.buildPortrait = function () {
     var view = this.opts.view, source = this.opts.source, across = view.across;
     var pitch = this.w / across, rowH = pitch * 0.88;
     var rows = Math.max(1, Math.floor(this.h / rowH)), top = (this.h - rows * rowH) / 2;
     var crop = cropRect(source.width, source.height, this.w / this.h, view);
     var luma = samplePortrait(source, crop, across, rows, this.h / rowH, -top / rowH);
-    var levels = portraitLevels(luma, across, rows, view.light);
-    var beads = [], hall = hallmarkGeometry(this.w), window2 = Math.pow(hall.r * 1.62 + pitch * 0.47, 2);
+    var levels = portraitLevels(luma, across, rows, view.light, !!view.one);
+    var oneTone = view.beads === 'gold' ? 't3' : 't4';
+    var beads = [], hall = hallmarkGeometry(this.w);
+    // the window is emptied first, so that in one colour no bead is left alone at its edge
+    emptyWindow(levels, { across: across, rows: rows, pitch: pitch, rowH: rowH, top: top }, hall);
+    if (view.one) levels = thinLoners(levels, across, rows);
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < across; col++) {
         var i = row * across + col, level = levels[i];
         if (!level) continue;
         var bx = (col + (row % 2 ? 0.75 : 0.25)) * pitch, by = top + (row + 0.5) * rowH;
-        if (Math.pow(bx - hall.cx, 2) + Math.pow(by - hall.cy, 2) < window2) continue;   // the window of the hallmark
-        var bead = sewnBead(bx, by, pitch * 0.47, 't' + level, 0, i);
+        var bead = sewnBead(bx, by, pitch * 0.47, view.one ? oneTone : 't' + level, 0, i);
         bead.key = (4 - level) + wobble(i, 6) * 1.2;
         beads.push(bead);
       }
     }
     beads.sort(function (a, b) { return a.key - b.key; });
     beads.forEach(function (bead, idx) { bead.t0 = (idx / beads.length) * 2600; });
-    if (!beads.length) { this.beads = beads; this.gem = null; return 0; }
+    if (!beads.length) { this.beads = beads; this.gem = null; this.letter = null; return 0; }
     // the hallmark comes after the portrait: its beads one by one, then its crystal
     for (var n = 1; n <= 11; n++) {
       var a = -Math.PI / 2 + n * Math.PI / 6;
@@ -956,6 +1028,7 @@
     this.beads = beads;
     this.gem = { x: hall.cx, y: hall.cy - hall.r, w: hall.r * 0.27, h: hall.r * 0.35 };
     this.hallR = hall.r * 0.2;
+    this.letter = { x: hall.cx, y: hall.cy, size: hall.r * 1.3 };
     this.gemAt = 3300;
     this.gemFrom = this.gemAt - 420;
     this.ground = null;
@@ -1105,6 +1178,27 @@
     ctx.restore();
   };
 
+  // The T of the hallmark, in champagne, its ink box centred on the ring. It is drawn only in
+  // the handwriting: without it nothing stands in its place, and letterMissing tells the page
+  // to redraw once the font has come.
+  Embroidery.prototype.drawLetter = function (ctx, alpha) {
+    var t = this.letter;
+    if (!t) return;
+    this.letterMissing = !handReady('T');
+    if (this.letterMissing) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = '400 ' + t.size + 'px "Marck Script"';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    var m = ctx.measureText('T');
+    var left = m.actualBoundingBoxLeft || 0, right = m.actualBoundingBoxRight || m.width;
+    var up = m.actualBoundingBoxAscent || t.size * 0.7, down = m.actualBoundingBoxDescent || 0;
+    ctx.fillStyle = '#d9c595';
+    ctx.fillText('T', t.x - (right - left) / 2, t.y + (up - down) / 2);
+    ctx.restore();
+  };
+
   // A glint caught by a facet: a four-point star, arms 2px wide at the centre tapering to
   // nothing, and a 3px core.
   Embroidery.prototype.drawStar = function (ctx, x, y, len, alpha) {
@@ -1138,7 +1232,7 @@
   // One frame at time t (ms). t = Infinity draws the finished embroidery.
   Embroidery.prototype.frame = function (t) {
     var ctx = this.ctx, active = [], head = null;
-    if (this.gem && !this.gemDone && t >= this.gemAt) { this.drawGem(this.bctx, 1); this.gemDone = true; }
+    if (this.gem && !this.gemDone && t >= this.gemAt) { this.drawGem(this.bctx, 1); this.drawLetter(this.bctx, 1); this.gemDone = true; }
     for (var i = 0; i < this.beads.length; i++) {
       var b = this.beads[i];
       if (b.done || t < b.t0) continue;
@@ -1151,7 +1245,11 @@
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.drawImage(this.base, 0, 0);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (this.gem && !this.gemDone && t > this.gemFrom) this.drawGem(ctx, Math.min(1, (t - this.gemFrom) / (this.gemAt - this.gemFrom)));
+    if (this.gem && !this.gemDone && t > this.gemFrom) {
+      var grown = Math.min(1, (t - this.gemFrom) / (this.gemAt - this.gemFrom));
+      this.drawGem(ctx, grown);
+      this.drawLetter(ctx, grown);
+    }
     for (var j = 0; j < active.length; j += 2) this.drawBead(ctx, active[j], active[j + 1]);
     if (head && (this.opts.mode === 'mark' || this.opts.mode === 'monogram')) this.drawNeedle(ctx, head.x, head.y, head.r);
   };
@@ -1869,72 +1967,75 @@
     return String(raw || '').replace(/[^A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
   }
 
-  // The geometry of img/logo.svg (viewBox 0 -6 496 107), drawn by code: the letters are 100
-  // units tall, the O is a ring of seventeen beads with a crystal at the top.
-  var LOGO_RECTS = [[0, 0, 64, 6], [29, 0, 6, 100], [104, 0, 6, 100], [150, 0, 6, 100], [214, 0, 6, 100],
-    [400, 0, 6, 100], [400, 94, 50, 6], [490, 0, 6, 100]];
-
-  function drawLogo(g, x, y, letterH) {
-    var k = letterH / 100;
-    g.save();
-    g.translate(x, y);
-    g.scale(k, k);
-    g.fillStyle = '#f2edf4';
-    LOGO_RECTS.forEach(function (r) { g.fillRect(r[0], r[1], r[2], r[3]); });
+  function roundedRect(g, x, y, w, h, r) {
     g.beginPath();
-    g.moveTo(150, 0); g.lineTo(157.7, 0); g.lineTo(220, 100); g.lineTo(212.3, 100);
-    g.closePath(); g.fill();
-    g.beginPath();
-    g.moveTo(310, -4.9); g.lineTo(318, 5.4); g.lineTo(310, 15.7); g.lineTo(302, 5.4);
-    g.closePath(); g.fill();
-    g.fillStyle = '#c3b8c6';
-    for (var i = 1; i <= 17; i++) {
-      var a = -Math.PI / 2 + i * (20 * Math.PI / 180);
-      g.beginPath();
-      g.arc(310 + 44.6 * Math.cos(a), 50 + 44.6 * Math.sin(a), 5.4, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.restore();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
   }
 
-  // The imprint on the wall under the case: the house on the left, what the picture is on the right.
-  function drawImprint(g, count, isPortrait) {
+  // The nameplate, the only thing laid over the embroidery: a small champagne plate at the
+  // bottom centre with what the picture is and where it comes from.
+  function drawNameplate(g, W, H, count, isPortrait) {
     var SANS = ' Jost, "Jost Fallback", system-ui, sans-serif';
-    drawLogo(g, 80, 1232, 38);
-    g.textAlign = 'left';
-    g.fillStyle = '#9d90a1';
-    g.font = '400 20px' + SANS;
-    if ('letterSpacing' in g) g.letterSpacing = '0.4px';
-    g.fillText(MOTTO, 80, 1306);
-    if ('letterSpacing' in g) g.letterSpacing = '0px';
-    g.textAlign = 'right';
-    g.fillStyle = '#c3b8c6';
-    g.font = '400 27px' + SANS;
-    g.fillText((isPortrait ? 'Портрет из ' : 'Монограмма из ') + formatCount(count) + ' ' + plural(count, 'бусины', 'бусин', 'бусин'), 1000, 1268);
-    g.fillStyle = '#f2edf4';
-    g.font = '500 31px' + SANS;
-    g.fillText('tinoli.ru', 1000, 1306);
+    var line1 = (isPortrait ? 'Портрет из ' : 'Монограмма из ') + formatCount(count) + ' ' + plural(count, 'бусины', 'бусин', 'бусин');
+    g.font = '400 21px' + SANS;
+    var w1 = g.measureText(line1).width;
+    g.font = '500 32px' + SANS;
+    var w2 = g.measureText('tinoli.ru').width;
+    var pw = Math.max(300, Math.ceil(Math.max(w1, w2)) + 68), ph = 96;
+    var px = Math.round((W - pw) / 2), py = H - 46 - ph;
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.45)';
+    g.shadowBlur = 22;
+    g.shadowOffsetY = 8;
+    g.fillStyle = '#cdb884';
+    roundedRect(g, px, py, pw, ph, 8);
+    g.fill();
+    g.restore();
+    var gold = g.createLinearGradient(0, py, 0, py + ph);
+    gold.addColorStop(0, '#eadcb8');
+    gold.addColorStop(1, '#cdb884');
+    g.fillStyle = gold;
+    roundedRect(g, px, py, pw, ph, 8);
+    g.fill();
+    g.lineWidth = 1;
+    g.strokeStyle = 'rgba(42,28,46,.55)';
+    roundedRect(g, px + 0.5, py + 0.5, pw - 1, ph - 1, 8);
+    g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.45)';
+    g.beginPath();
+    g.moveTo(px + 8, py + 1.5);
+    g.lineTo(px + pw - 8, py + 1.5);
+    g.stroke();
+    g.fillStyle = '#2a1c2e';
+    g.textAlign = 'center';
+    g.font = '400 21px' + SANS;
+    g.fillText(line1, W / 2, py + 40);
+    g.font = '500 32px' + SANS;
+    g.fillText('tinoli.ru', W / 2, py + 76);
     g.textAlign = 'left';
   }
 
-  // The case as a picture to keep, 1080 x 1350: the lit case with the embroidery, and under
-  // it the imprint of the house. extra holds the embroidery's own options (its mode and what
-  // it stitches).
+  // The case as a picture to keep, 1080 x 1350: the embroidery over the whole picture and a
+  // small nameplate at the bottom; no wall and no frame. extra holds the embroidery's own
+  // options (its mode and what it stitches).
   function monogramPicture(extra, done) {
-    var W = 1080, H = 1350, CASE = { x: 80, y: 48, w: 920, h: 1150 };
+    var W = 1080, H = 1350;
     var out = document.createElement('canvas');
     out.width = W;
     out.height = H;
     var g = out.getContext('2d');
-    g.fillStyle = '#120b13';
-    g.fillRect(0, 0, W, H);
-    var light = g.createLinearGradient(0, CASE.y, 0, CASE.y + CASE.h);
+    var light = g.createLinearGradient(0, 0, 0, H);
     light.addColorStop(0, '#261a2b');
     light.addColorStop(0.6, '#1a111c');
     light.addColorStop(1, '#150d17');
     g.fillStyle = light;
-    g.fillRect(CASE.x, CASE.y, CASE.w, CASE.h);
-    var opts = { still: true, size: { w: CASE.w, h: CASE.h } };
+    g.fillRect(0, 0, W, H);
+    var opts = { still: true, size: { w: W, h: H } };
     Object.keys(extra).forEach(function (k) { opts[k] = extra[k]; });
     var layer = document.createElement('canvas');
     var run = new Embroidery(layer, opts);
@@ -1943,17 +2044,9 @@
       [out, layer, run.base].forEach(function (c) { if (c) { c.width = 0; c.height = 0; } });
     };
     if (!run.run()) { release(); done(null); return; }
-    g.drawImage(layer, CASE.x, CASE.y);
-    // the edges of the glass, one pixel inside the case
-    g.fillStyle = 'rgba(242,237,244,.24)';
-    g.fillRect(CASE.x, CASE.y, CASE.w, 1);
-    g.fillStyle = 'rgba(242,237,244,.12)';
-    g.fillRect(CASE.x, CASE.y, 1, CASE.h);
-    g.fillRect(CASE.x + CASE.w - 1, CASE.y, 1, CASE.h);
-    g.fillStyle = 'rgba(242,237,244,.08)';
-    g.fillRect(CASE.x, CASE.y + CASE.h - 1, CASE.w, 1);
+    g.drawImage(layer, 0, 0);
     var portrait = opts.mode === 'portrait';
-    drawImprint(g, run.beads.length, portrait);
+    drawNameplate(g, W, H, run.beads.length, portrait);
     out.toBlob(function (blob) {
       if (!blob) { done(null); release(); return; }
       signPicture(blob, portrait ? 'Портрет, вышитый бисером' : 'Монограмма, вышитая бисером', function (signed) {
@@ -2144,10 +2237,25 @@
   }
 
   var HAND_FONT = '400 100px "Marck Script"';
+  var handCame = false;    // the font file itself has come: check() alone also says yes for one that failed
+  var handAsked = null;
+
+  // The handwriting is asked for once; every caller gets the same promise, which tells
+  // whether the font came and never fails. Null where fonts cannot be asked for.
+  function askHand() {
+    if (handAsked || !document.fonts || !document.fonts.load) return handAsked;
+    handAsked = document.fonts.load(HAND_FONT, 'TАЯ').then(function (faces) {
+      handCame = !!(faces && faces.length);
+      return handCame;
+    }, function () { return false; });
+    return handAsked;
+  }
 
   // True when the handwriting is there to draw the letters of text (or nothing can tell).
   function handReady(text) {
-    try { return !document.fonts || !document.fonts.check || document.fonts.check(HAND_FONT, text); } catch (err) { return true; }
+    if (!document.fonts || !document.fonts.check || !document.fonts.load) return true;
+    if (!handCame) return false;
+    try { return document.fonts.check(HAND_FONT, text); } catch (err) { return true; }
   }
 
   // The monogram: the initials form and the medallion they are stitched into.
@@ -2277,8 +2385,11 @@
     // letters are sampled from whatever the browser has, and again when the font arrives.
     // A portrait has no letters to wait for.
     var begin = function () { if (!app.begun) setMode(app, name, true); };
-    var wait = document.fonts && document.fonts.load ? document.fonts.load(HAND_FONT, 'AЯ') : null;
-    if (wait) wait.then(function () { begin(); app.modes.monogram.refont(); }, begin);
+    var wait = askHand();
+    var refont = function () {
+      Object.keys(app.modes).forEach(function (k) { if (app.modes[k].refont) app.modes[k].refont(); });
+    };
+    if (wait) wait.then(function (came) { begin(); if (came) refont(); });
     if (name === 'monogram' && wait) setTimeout(begin, 2500);
     else begin();
     return function (found) { app.channel = found || null; refreshAsk(app); };
@@ -2324,7 +2435,7 @@
   }
 
   function freshView(beads, size) {
-    return { zoom: 1, px: 0.5, py: 0.42, light: 0, size: size, across: 0, beads: beads };
+    return { zoom: 1, px: 0.5, py: 0.42, light: 0, size: size, across: 0, beads: beads, one: false };
   }
 
   // The chosen file into a canvas of at most PHOTO_SIDE px, the object URL revoked at once.
@@ -2372,7 +2483,13 @@
     if (!m.photo) return;
     Object.keys(m.sliders).forEach(function (k) { m.sliders[k].value = String(m.view[k]); });
     m.beadButtons.forEach(function (b) {
-      b.setAttribute('aria-pressed', b.getAttribute('data-beads') === m.view.beads ? 'true' : 'false');
+      var key = b.getAttribute('data-beads');
+      b.setAttribute('aria-pressed', key === m.view.beads ? 'true' : 'false');
+      // pearl and gold together have no meaning in one colour
+      b.disabled = key === 'duo' && !!m.view.one;
+    });
+    m.toneButtons.forEach(function (b) {
+      b.setAttribute('aria-pressed', (b.getAttribute('data-tones') === 'one') === !!m.view.one ? 'true' : 'false');
     });
   }
 
@@ -2561,7 +2678,8 @@
       sayPortrait(m, '');
       releaseCanvas(m.photo);
       m.photo = work;
-      m.view = freshView(m.view.beads, m.view.size === null ? startSize(caseWidth(m)) : m.view.size);
+      // a new photo keeps the beads and the tones chosen for the one before
+      m.view = merge(freshView(m.view.beads, m.view.size === null ? startSize(caseWidth(m)) : m.view.size), { one: !!m.view.one });
       if (m.app.mode !== 'portrait') return;
       portraitFrame(m);
       portraitRender(m, true);
@@ -2585,7 +2703,9 @@
     m.photo = null;
     m.picture = null;
     m.count = 0;
-    m.view = freshView(m.view.beads, m.view.size);
+    // back to four tones, with the beads chosen before one colour took their place
+    m.view = freshView(m.chosenBeads || m.view.beads, m.view.size);
+    m.chosenBeads = null;
     m.input.value = '';
     portraitFrame(m);
     refreshCase(app);
@@ -2646,6 +2766,20 @@
         var key = b.getAttribute('data-beads');
         if (!m.photo || key === m.view.beads) return;
         m.view = merge(m.view, { beads: key });
+        m.chosenBeads = key;
+        syncControls(m);
+        portraitRender(m, true);
+      });
+    });
+    m.toneButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var one = b.getAttribute('data-tones') === 'one';
+        if (!m.photo || one === !!m.view.one) return;
+        // one colour is pearl or gold: gold when the choice was both, and back again after
+        var beads = one ? (m.view.beads === 'duo' ? 'gold' : m.view.beads) : (m.chosenBeads || m.view.beads);
+        if (one) m.chosenBeads = m.chosenBeads || m.view.beads;
+        m.view = merge(m.view, { one: one, beads: beads });
+        if (!one) m.chosenBeads = null;
         syncControls(m);
         portraitRender(m, true);
       });
@@ -2661,6 +2795,7 @@
       input: panel.querySelector('[data-portrait-file]'), pick: panel.querySelector('[data-portrait-pick]'),
       error: panel.querySelector('[data-portrait-error]'), controls: panel.querySelector('[data-portrait-controls]'),
       beadButtons: [].slice.call(panel.querySelectorAll('[data-beads]')),
+      toneButtons: [].slice.call(panel.querySelectorAll('[data-tones]')), chosenBeads: null,
       shown: el('canvas', { className: 'photoview', 'aria-hidden': 'true' })
     };
     app.stage.insertBefore(m.shown, app.canvas);
@@ -2678,6 +2813,10 @@
       askHref: function () { return draftHref(app.channel, 'портрете бисером', pageUrl() + PORTRAIT_HASH); },
       getPicture: function (done) { portraitPicture(m, done); },
       show: function () { portraitShow(m); },
+      // the handwriting has come: a portrait drawn without the T of its hallmark is drawn once more
+      refont: function () {
+        if (m.photo && app.mode === 'portrait' && app.run && app.run.letterMissing) portraitRender(m, false);
+      },
       hide: function () { portraitHide(m); }
     };
   }
@@ -2713,6 +2852,12 @@
     document.querySelectorAll('.monolink').forEach(function (link) {
       var ring = el('span', { className: 'monolink__ring', 'aria-hidden': 'true' });
       ring.appendChild(markRing());
+      if (link.classList.contains('monolink--portrait')) {
+        // the portrait invitation: a round miniature of a portrait in the ring, nothing cycles
+        ring.appendChild(el('img', { className: 'monolink__mini', src: '/img/portrait-mini.jpg', alt: '', width: '29', height: '29', decoding: 'async' }));
+        link.insertBefore(ring, link.firstChild);
+        return;
+      }
       var letters = SAMPLE_LETTERS.map(function (ch, i) {
         var letter = el('b', { className: i ? null : 'is-on' }, ch);
         ring.appendChild(letter);
@@ -2756,6 +2901,79 @@
     });
   }
 
+  // ---------------------------------------------------------------- the portrait on the home page
+  // A portrait stitched from a picture of the site's own, so the tool is one click away. The
+  // picture is asked for when the stage comes within 300 px of the screen, the stitching starts
+  // when a third of the case is in view. A visitor's photo is never touched here.
+  var DEMO_VIEW = { zoom: 1, px: 0.5, py: 0.5, light: 0, across: 84, beads: 'duo', one: false };
+
+  function initPortraitDemo() {
+    var root = document.querySelector('[data-portrait-demo]');
+    if (!root) return;
+    var stage = root.querySelector('.vitrine'), canvas = root.querySelector('.embroidery');
+    var caption = root.querySelector('[data-demo-caption]');
+    var plain = caption ? caption.textContent : '';
+    var photo = null, near = false, seen = false, fontWait = true, run = null, begun = false, late = false;
+
+    // Without the picture the case keeps the mark, and the caption about the picture goes.
+    var fail = function () {
+      stage.classList.add('is-fallback');
+      if (caption) caption.hidden = true;
+    };
+    var go = function () {
+      if (begun || !photo || !seen || fontWait) return;
+      begun = true;
+      run = new Embroidery(canvas, {
+        mode: 'portrait', source: photo, view: DEMO_VIEW,
+        refit: function () { return DEMO_VIEW; },
+        onCount: function (n) {
+          if (caption) caption.textContent = plain + ' Вышито из ' + formatCount(n) + ' ' + plural(n, 'бусины', 'бусин', 'бусин') + '.';
+        },
+        // the handwriting came while the stitching ran: the T is added once it has ended
+        onDone: function () { if (late) { late = false; run.redraw(DEMO_VIEW); } }
+      });
+      if (!run.run()) fail();
+    };
+    // The handwriting is asked for first, so the hallmark has its T. It is not waited for
+    // beyond 2.5 s, and a T that comes later is drawn into the finished portrait.
+    var fontWaited = function () { fontWait = false; go(); };
+    var fontCame = function (came) {
+      fontWaited();
+      if (!came || !run || !run.letterMissing) return;
+      if (run.finished) run.redraw(DEMO_VIEW);
+      else late = true;
+    };
+    var load = function () {
+      if (near) return;
+      near = true;
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
+          photo = c;
+        } catch (err) { fail(); return; }
+        go();
+      };
+      img.onerror = fail;
+      img.src = '/img/portrait-demo.jpg';
+      var wait = askHand();
+      if (wait) { wait.then(fontCame); setTimeout(fontWaited, 2500); }
+      else fontWaited();
+    };
+    if (!('IntersectionObserver' in window)) { seen = true; load(); return; }
+    var nearWatch = new IntersectionObserver(function (entries) {
+      if (entries[entries.length - 1].isIntersecting) { nearWatch.disconnect(); load(); }
+    }, { rootMargin: '300px' });
+    var inView = new IntersectionObserver(function (entries) {
+      if (entries[entries.length - 1].isIntersecting) { inView.disconnect(); seen = true; go(); }
+    }, { threshold: 0.33 });
+    nearWatch.observe(root);
+    inView.observe(stage);
+  }
+
   // ---------------------------------------------------------------- boot
   // The browser jumped to #works on the page as it was before the catalogue came;
   // once the hero and the grid are final, land there again.
@@ -2779,6 +2997,7 @@
     initMacroStages();
     initPrefetch();
     initMonoLinks();
+    initPortraitDemo();
     var page = document.body.getAttribute('data-page');
     var monogramChannel = page === 'monogram' ? initMonogram() : null;
 

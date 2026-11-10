@@ -68,13 +68,37 @@
         <p class="hero__note" data-hero-note data-config="home.empty_text" hidden>Первые работы появятся в этой витрине.</p>
         <div class="hero__actions">
           <a class="btn" href="#works" data-hero-cta data-config="home.hero_button">Смотреть работы</a>
-          <a class="monolink" href="/monogram.html"><span class="monolink__words"><span class="monolink__title">Вышить свою монограмму</span><span class="monolink__note">или портрет по вашему фото</span></span></a>
+          <div class="hero__invites">
+            <a class="monolink monolink--portrait" href="/monogram.html#portrait"><span class="monolink__words"><span class="monolink__title">Вышить свой портрет</span><span class="monolink__note">бисером, по вашему фото</span></span></a>
+            <a class="monolink" href="/monogram.html"><span class="monolink__words"><span class="monolink__title">Вышить свою монограмму</span><span class="monolink__note">одна или две буквы</span></span></a>
+          </div>
         </div>
         <div class="featured" data-featured hidden>
           <p class="featured__label">Новая работа</p>
           <h2 class="featured__title display"><a href="#works" data-featured-link></a></h2>
           <dl class="passport" data-featured-passport></dl>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The demo portrait: Élisabeth Louise Vigée Le Brun, Madame Grand, 1783,
+       The Metropolitan Museum of Art, New York, Open Access (CC0). -->
+  <section class="section" id="portrait" aria-labelledby="portrait-title">
+    <div class="wrap teaser">
+      <div class="teaser__copy">
+        <h2 class="section__title display" id="portrait-title">Портрет, вышитый бисером</h2>
+        <p class="teaser__lead">Выберите своё фото, и витрина вышьет по нему портрет: жемчуг и золото, бусина за бусиной.</p>
+        <p class="teaser__action"><a class="btn" href="/monogram.html#portrait">Вышить свой портрет</a></p>
+        <p class="note">Фото остаётся на вашем устройстве: сайт его не получает и не хранит.</p>
+      </div>
+      <div class="teaser__stage" data-portrait-demo>
+        <div class="vitrine" role="img" aria-label="Портрет кисти Элизабет Виже-Лебрен, вышитый бисером">
+          <div class="mark-fallback" aria-hidden="true"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="41.8" cy="15.9" r="3.3"/><circle cx="49.1" cy="23.1" r="3.3"/><circle cx="51.7" cy="33.0" r="3.3"/><circle cx="49.1" cy="42.8" r="3.3"/><circle cx="41.8" cy="50.1" r="3.3"/><circle cx="32.0" cy="52.7" r="3.3"/><circle cx="22.2" cy="50.1" r="3.3"/><circle cx="14.9" cy="42.9" r="3.3"/><circle cx="12.3" cy="33.0" r="3.3"/><circle cx="14.9" cy="23.1" r="3.3"/><circle cx="22.1" cy="15.9" r="3.3"/></g><path fill="#f2edf4" d="M32.0 6.7L37.1 13.3L32.0 19.9L26.9 13.3Z"/></svg></div>
+          <canvas class="embroidery" aria-hidden="true"></canvas>
+          <span class="vitrine__shade" aria-hidden="true"></span>
+        </div>
+        <p class="teaser__caption" data-demo-caption>Для примера: портрет кисти Элизабет Виже-Лебрен, 1783, Метрополитен-музей.</p>
       </div>
     </div>
   </section>

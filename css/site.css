@@ -605,6 +605,8 @@ button { font: inherit; color: inherit; }
 }
 .slider input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--accent); }
 .slider input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.portrait__tones { margin-top: var(--s-2); }
+.kinds button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .portrait__hint { margin-top: var(--s-4); max-width: 38ch; font-size: var(--t-meta); line-height: 1.6; color: var(--ink-3); }
 
 /* ---------- The way to the monogram: the ring of the mark with a letter in it ---------- */
@@ -636,6 +638,26 @@ button { font: inherit; color: inherit; }
 .monolink:focus-visible .monolink__title { text-decoration-color: var(--accent); }
 .monolink:focus-visible circle { animation: sew .45s var(--ease) both; }
 @keyframes sew { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+/* the portrait invitation: a round miniature of a portrait where the letters stand */
+.monolink__mini {
+  position: absolute; left: 50%; top: 51.5%; width: 29px; height: 29px; margin: -14.5px 0 0 -14.5px;
+  border-radius: 50%; object-fit: cover; display: block;
+}
+.hero__invites { display: grid; gap: 14px; justify-items: start; }
+@media (max-width: 479px) { .monolink__title, .monolink__note { overflow-wrap: anywhere; } }
+
+/* ---------- The portrait on the home page: a live demo and the way to the tool ---------- */
+.teaser { display: grid; gap: var(--s-6); align-items: center; }
+.teaser__lead { margin-top: var(--s-5); font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); max-width: 34rem; font-weight: 300; }
+.teaser__action { margin-top: var(--s-5); }
+.teaser__copy .note { margin-top: var(--s-4); }
+.teaser__stage { width: 100%; max-width: 420px; justify-self: center; }
+.teaser__stage .vitrine { aspect-ratio: 4 / 5; }
+.teaser__caption { margin-top: var(--s-4); font-size: var(--t-meta); line-height: 1.5; color: var(--ink-3); letter-spacing: .02em; }
+@media (min-width: 900px) {
+  .teaser { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: var(--s-8, 80px); }
+  .teaser__stage { justify-self: end; }
+}
 
 /* ---------- From a tile to its page: the case travels, the header stays ---------- */
 @media (prefers-reduced-motion: no-preference) {
