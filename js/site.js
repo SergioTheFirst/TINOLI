@@ -524,6 +524,7 @@
     this.finished = false;
     this.twinkleDone = false;
     this.gemAt = 420;        // ms at which the crystal is set
+    this.gemFrom = 0;        // ms at which it starts to grow (a hallmark's crystal comes late)
   }
 
   Embroidery.prototype.measure = function () {
@@ -607,17 +608,18 @@
     return beads.length;
   };
 
-  // Where the beads of the initials go. The letters are drawn in the site's own grotesque
-  // (it has both alphabets), fitted into a circle of radius rin and sampled on a hexagonal
-  // grid of the bead pitch. Positions are relative to the centre of the circle.
+  // Where the beads of the initials go. The letters are drawn in the site's handwriting
+  // (Marck Script, both alphabets in it), fitted into a circle of radius rin and sampled
+  // on a hexagonal grid of the bead pitch. Each letter is also stroked, so that a hairline of
+  // the script holds a row of beads. Positions are relative to the centre of the circle.
   function letterCells(text, rin, pitch) {
     var chars = text.split('');
     if (!chars.length || rin < pitch * 4) return [];
     var REF = 200;           // the letters are measured at this size, then scaled to fit
-    var font = function (px) { return '500 ' + px + 'px Jost, "Jost Fallback", system-ui, sans-serif'; };
+    var font = function (px) { return '400 ' + px + 'px "Marck Script", Jost, "Jost Fallback", system-ui, sans-serif'; };
     var probe = document.createElement('canvas').getContext('2d');
     probe.font = font(REF);
-    var gap = REF * 0.07, width = -gap, up = 0, down = 0;
+    var gap = REF * 0.03, width = -gap, up = 0, down = 0;
     var glyphs = chars.map(function (ch) {
       var m = probe.measureText(ch);
       var left = m.actualBoundingBoxLeft || 0;
@@ -637,9 +639,12 @@
     var g = mask.getContext('2d', { willReadFrequently: true });
     g.font = font(REF * fit);
     g.textBaseline = 'alphabetic';
+    g.lineWidth = pitch * 0.6;
+    g.lineJoin = 'round';
     var x = mid - width * fit / 2, base = mid - height * fit / 2 + up * fit;
     glyphs.forEach(function (gl) {
       g.fillText(gl.ch, x + gl.left * fit, base);
+      g.strokeText(gl.ch, x + gl.left * fit, base);
       x += (gl.w + gap) * fit;
     });
     var px = g.getImageData(0, 0, side, side).data;
@@ -787,6 +792,24 @@
     return set;
   }
 
+  // The hallmark: a miniature of the mark (eleven beads round a centre, the crystal in the
+  // twelfth place) stitched into the upper right corner of every portrait, on a small round
+  // window of bare velvet. Sprites are kept by radius and dpr, like the portrait's.
+  var hallmarkTonesMade = {};
+
+  function hallmarkTones(radius, dpr) {
+    var id = radius.toFixed(2) + '|' + dpr;
+    if (hallmarkTonesMade[id]) return hallmarkTonesMade[id];
+    if (Object.keys(hallmarkTonesMade).length >= 6) hallmarkTonesMade = {};
+    hallmarkTonesMade[id] = { pearl: makeToneSprite(radius, dpr, TONES.pearl), gold: makeToneSprite(radius, dpr, TONES.gold) };
+    return hallmarkTonesMade[id];
+  }
+
+  function hallmarkGeometry(w) {
+    var r = clampRange(w * 0.034, 13, 40), inset = Math.max(w * 0.085, r * 2.3);
+    return { r: r, cx: w - inset, cy: inset };
+  }
+
   // The part of the photo that fills a box of the given proportions at a zoom, placed by
   // px and py (0 to 1) within the room the zoom leaves.
   function cropRect(sw, sh, aspect, view) {
@@ -907,22 +930,36 @@
     var crop = cropRect(source.width, source.height, this.w / this.h, view);
     var luma = samplePortrait(source, crop, across, rows, this.h / rowH, -top / rowH);
     var levels = portraitLevels(luma, across, rows, view.light);
-    var beads = [];
+    var beads = [], hall = hallmarkGeometry(this.w), window2 = Math.pow(hall.r * 1.62 + pitch * 0.47, 2);
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < across; col++) {
         var i = row * across + col, level = levels[i];
         if (!level) continue;
-        var bead = sewnBead((col + (row % 2 ? 0.75 : 0.25)) * pitch, top + (row + 0.5) * rowH, pitch * 0.47, 't' + level, 0, i);
+        var bx = (col + (row % 2 ? 0.75 : 0.25)) * pitch, by = top + (row + 0.5) * rowH;
+        if (Math.pow(bx - hall.cx, 2) + Math.pow(by - hall.cy, 2) < window2) continue;   // the window of the hallmark
+        var bead = sewnBead(bx, by, pitch * 0.47, 't' + level, 0, i);
         bead.key = (4 - level) + wobble(i, 6) * 1.2;
         beads.push(bead);
       }
     }
     beads.sort(function (a, b) { return a.key - b.key; });
     beads.forEach(function (bead, idx) { bead.t0 = (idx / beads.length) * 2600; });
+    if (!beads.length) { this.beads = beads; this.gem = null; return 0; }
+    // the hallmark comes after the portrait: its beads one by one, then its crystal
+    for (var n = 1; n <= 11; n++) {
+      var a = -Math.PI / 2 + n * Math.PI / 6;
+      var mark = sewnBead(hall.cx + hall.r * Math.cos(a), hall.cy + hall.r * Math.sin(a), hall.r * 0.2,
+        n % 2 ? 'gold' : 'pearl', 2700 + n * 45, n);
+      mark.hall = true;
+      beads.push(mark);
+    }
     this.beads = beads;
-    this.gem = null;
+    this.gem = { x: hall.cx, y: hall.cy - hall.r, w: hall.r * 0.27, h: hall.r * 0.35 };
+    this.hallR = hall.r * 0.2;
+    this.gemAt = 3300;
+    this.gemFrom = this.gemAt - 420;
     this.ground = null;
-    this.endT = 3200;
+    this.endT = 3800;
     return beads.length;
   };
 
@@ -942,8 +979,26 @@
     if (!count) return false;
     this.frame(Infinity);
     this.finished = true;
+    this.rekindle();
     if (this.opts.onCount) this.opts.onCount(count);
     return true;
+  };
+
+  // The glint of a portrait's hallmark starts over on the crystal of the new view.
+  Embroidery.prototype.rekindle = function () {
+    if (this.opts.mode !== 'portrait' || this.stopped || this.opts.size) return;
+    if (this.reglint) this.reglint();
+    else this.twinkle();
+  };
+
+  // The portrait's tones and the hallmark's gold and pearl, both from caches.
+  Embroidery.prototype.portraitSprites = function (maxR) {
+    var set = {}, own = portraitTones(this.opts.view.beads, maxR, this.dpr);
+    Object.keys(own).forEach(function (k) { set[k] = own[k]; });
+    var hall = hallmarkTones(this.hallR, this.dpr);
+    set.gold = hall.gold;
+    set.pearl = hall.pearl;
+    return set;
   };
 
   Embroidery.prototype.prepare = function () {
@@ -952,9 +1007,9 @@
       : mode === 'monogram' ? this.buildMonogram() : mode === 'portrait' ? this.buildPortrait() : this.sampleImage();
     if (!count) return 0;
     var maxR = 0;
-    this.beads.forEach(function (bd) { if (bd.r > maxR) maxR = bd.r; });
+    this.beads.forEach(function (bd) { if (bd.r > maxR && !bd.hall) maxR = bd.r; });
     if (mode === 'image') this.shade = makeShadeSprite(maxR, this.dpr);
-    else if (mode === 'portrait') this.tones = portraitTones(this.opts.view.beads, maxR, this.dpr);
+    else if (mode === 'portrait') this.tones = this.portraitSprites(maxR);
     else this.tones = { pearl: makeToneSprite(maxR, this.dpr, TONES.pearl), gold: makeToneSprite(maxR, this.dpr, TONES.gold) };
     // The layer of finished beads is cleared and reused while the canvas keeps its size.
     var base = this.base;
@@ -1096,7 +1151,7 @@
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.drawImage(this.base, 0, 0);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (this.gem && !this.gemDone && t > 0) this.drawGem(ctx, Math.min(1, t / this.gemAt));
+    if (this.gem && !this.gemDone && t > this.gemFrom) this.drawGem(ctx, Math.min(1, (t - this.gemFrom) / (this.gemAt - this.gemFrom)));
     for (var j = 0; j < active.length; j += 2) this.drawBead(ctx, active[j], active[j + 1]);
     if (head && (this.opts.mode === 'mark' || this.opts.mode === 'monogram')) this.drawNeedle(ctx, head.x, head.y, head.r);
   };
@@ -1185,6 +1240,7 @@
     this.frame(Infinity);
     var first = !this.finished;
     this.finished = true;
+    this.rekindle();
     if (first && this.opts.onDone) this.opts.onDone(true);
   };
 
@@ -1192,15 +1248,17 @@
   // then for twelve seconds; only the small squares around each spark are redrawn.
   Embroidery.prototype.twinkle = function () {
     var self = this;
-    var gem = this.gem;
-    if (reduceMotion.matches || !gem) return;
+    if (reduceMotion.matches || !this.gem) return;
     // Arms 0.3 of the crystal's width, shortened where a facet edge is near: the star
-    // never leaves the crystal.
-    var spots = [[-0.2, -0.3], [0.15, -0.15], [0, 0.25], [-0.3, 0.05], [0.1, -0.5]].map(function (p) {
+    // never leaves the crystal. The crystal is read at each glint, so a portrait that is
+    // laid out anew keeps its glint.
+    var SPOTS = [[-0.2, -0.3], [0.15, -0.15], [0, 0.25], [-0.3, 0.05], [0.1, -0.5]];
+    var spotAt = function (p) {
+      var gem = self.gem;
       var room = Math.min(gem.w * (1 - Math.abs(p[1])) - gem.w * Math.abs(p[0]),
         gem.h * (1 - Math.abs(p[0])) - gem.h * Math.abs(p[1]));
       return { x: gem.x + gem.w * p[0], y: gem.y + gem.h * p[1], len: Math.min(gem.w * 0.6, room) * 0.9 };
-    });
+    };
     var started = performance.now(), LIMIT = 12000, next = started + 500;
     var glints = [], dirty = [];
 
@@ -1221,7 +1279,7 @@
       if (!self.visible || document.hidden || reduceMotion.matches) { glints = []; return; }
       var live = now - started < LIMIT;
       if (live && now >= next && glints.length < 2) {
-        var b = spots[Math.floor(Math.random() * spots.length)];
+        var b = spotAt(SPOTS[Math.floor(Math.random() * SPOTS.length)]);
         glints.push({ x: b.x, y: b.y, len: b.len, t0: now });
         next = now + 650 + Math.random() * 600;
       }
@@ -1240,6 +1298,16 @@
     };
     this.resume = function () {
       if (!self.raf && !self.twinkleDone) self.raf = requestAnimationFrame(loop);
+    };
+    // The layer under the sparks was drawn anew: they are gone with it, and the twelve
+    // seconds start over. The observer and the listeners below stay as they are.
+    this.reglint = function () {
+      glints = [];
+      dirty = [];
+      started = performance.now();
+      next = started + 500;
+      self.twinkleDone = false;
+      self.resume();
     };
     this.stopTwinkle = function () {
       cancelAnimationFrame(self.raf);
@@ -1801,22 +1869,72 @@
     return String(raw || '').replace(/[^A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
   }
 
-  // The case as a picture to keep: the velvet, the embroidery, the address. extra holds the
-  // embroidery's own options (its mode and what it stitches). A portrait fades into the velvet
-  // under the address, so the line reads on any photo.
+  // The geometry of img/logo.svg (viewBox 0 -6 496 107), drawn by code: the letters are 100
+  // units tall, the O is a ring of seventeen beads with a crystal at the top.
+  var LOGO_RECTS = [[0, 0, 64, 6], [29, 0, 6, 100], [104, 0, 6, 100], [150, 0, 6, 100], [214, 0, 6, 100],
+    [400, 0, 6, 100], [400, 94, 50, 6], [490, 0, 6, 100]];
+
+  function drawLogo(g, x, y, letterH) {
+    var k = letterH / 100;
+    g.save();
+    g.translate(x, y);
+    g.scale(k, k);
+    g.fillStyle = '#f2edf4';
+    LOGO_RECTS.forEach(function (r) { g.fillRect(r[0], r[1], r[2], r[3]); });
+    g.beginPath();
+    g.moveTo(150, 0); g.lineTo(157.7, 0); g.lineTo(220, 100); g.lineTo(212.3, 100);
+    g.closePath(); g.fill();
+    g.beginPath();
+    g.moveTo(310, -4.9); g.lineTo(318, 5.4); g.lineTo(310, 15.7); g.lineTo(302, 5.4);
+    g.closePath(); g.fill();
+    g.fillStyle = '#c3b8c6';
+    for (var i = 1; i <= 17; i++) {
+      var a = -Math.PI / 2 + i * (20 * Math.PI / 180);
+      g.beginPath();
+      g.arc(310 + 44.6 * Math.cos(a), 50 + 44.6 * Math.sin(a), 5.4, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+
+  // The imprint on the wall under the case: the house on the left, what the picture is on the right.
+  function drawImprint(g, count, isPortrait) {
+    var SANS = ' Jost, "Jost Fallback", system-ui, sans-serif';
+    drawLogo(g, 80, 1232, 38);
+    g.textAlign = 'left';
+    g.fillStyle = '#9d90a1';
+    g.font = '400 20px' + SANS;
+    if ('letterSpacing' in g) g.letterSpacing = '0.4px';
+    g.fillText(MOTTO, 80, 1306);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.textAlign = 'right';
+    g.fillStyle = '#c3b8c6';
+    g.font = '400 27px' + SANS;
+    g.fillText((isPortrait ? 'Портрет из ' : 'Монограмма из ') + formatCount(count) + ' ' + plural(count, 'бусины', 'бусин', 'бусин'), 1000, 1268);
+    g.fillStyle = '#f2edf4';
+    g.font = '500 31px' + SANS;
+    g.fillText('tinoli.ru', 1000, 1306);
+    g.textAlign = 'left';
+  }
+
+  // The case as a picture to keep, 1080 x 1350: the lit case with the embroidery, and under
+  // it the imprint of the house. extra holds the embroidery's own options (its mode and what
+  // it stitches).
   function monogramPicture(extra, done) {
-    var W = 1080, H = 1350;
+    var W = 1080, H = 1350, CASE = { x: 80, y: 48, w: 920, h: 1150 };
     var out = document.createElement('canvas');
     out.width = W;
     out.height = H;
     var g = out.getContext('2d');
-    var light = g.createLinearGradient(0, 0, 0, H);
+    g.fillStyle = '#120b13';
+    g.fillRect(0, 0, W, H);
+    var light = g.createLinearGradient(0, CASE.y, 0, CASE.y + CASE.h);
     light.addColorStop(0, '#261a2b');
     light.addColorStop(0.6, '#1a111c');
     light.addColorStop(1, '#150d17');
     g.fillStyle = light;
-    g.fillRect(0, 0, W, H);
-    var opts = { still: true, size: { w: W, h: H } };
+    g.fillRect(CASE.x, CASE.y, CASE.w, CASE.h);
+    var opts = { still: true, size: { w: CASE.w, h: CASE.h } };
     Object.keys(extra).forEach(function (k) { opts[k] = extra[k]; });
     var layer = document.createElement('canvas');
     var run = new Embroidery(layer, opts);
@@ -1825,21 +1943,136 @@
       [out, layer, run.base].forEach(function (c) { if (c) { c.width = 0; c.height = 0; } });
     };
     if (!run.run()) { release(); done(null); return; }
-    g.drawImage(layer, 0, 0);
-    if (opts.mode === 'portrait') {
-      // The line below must read on any portrait: the beads sink into velvet under it.
-      var fade = g.createLinearGradient(0, H - 260, 0, H);
-      fade.addColorStop(0, 'rgba(18,11,19,0)');
-      fade.addColorStop(0.55, 'rgba(18,11,19,.9)');
-      fade.addColorStop(1, '#120b13');
-      g.fillStyle = fade;
-      g.fillRect(0, H - 260, W, 260);
+    g.drawImage(layer, CASE.x, CASE.y);
+    // the edges of the glass, one pixel inside the case
+    g.fillStyle = 'rgba(242,237,244,.24)';
+    g.fillRect(CASE.x, CASE.y, CASE.w, 1);
+    g.fillStyle = 'rgba(242,237,244,.12)';
+    g.fillRect(CASE.x, CASE.y, 1, CASE.h);
+    g.fillRect(CASE.x + CASE.w - 1, CASE.y, 1, CASE.h);
+    g.fillStyle = 'rgba(242,237,244,.08)';
+    g.fillRect(CASE.x, CASE.y + CASE.h - 1, CASE.w, 1);
+    var portrait = opts.mode === 'portrait';
+    drawImprint(g, run.beads.length, portrait);
+    out.toBlob(function (blob) {
+      if (!blob) { done(null); release(); return; }
+      signPicture(blob, portrait ? 'Портрет, вышитый бисером' : 'Монограмма, вышитая бисером', function (signed) {
+        done(signed);
+        release();
+      });
+    }, 'image/png');
+  }
+
+  // ---------------------------------------------------------------- the label inside the file
+  // PNG text chunks with fixed strings only: nothing of the visitor, the photo or the device.
+  var PNG_SOURCE = 'https://tinoli.ru/monogram.html';
+  var PNG_COPYRIGHT = 'Знак и оформление картинки: © TINOLI, tinoli.ru';
+  var crcTable = null;
+
+  function crc32(bytes) {
+    if (!crcTable) {
+      crcTable = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+        crcTable[n] = c >>> 0;
+      }
     }
-    g.fillStyle = '#9d90a1';
-    g.font = '400 30px Jost, "Jost Fallback", system-ui, sans-serif';
-    g.textAlign = 'center';
-    g.fillText('tinoli.ru · ' + MOTTO, W / 2, H - 64);
-    out.toBlob(function (blob) { done(blob); release(); }, 'image/png');
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function utf8Bytes(text) {
+    if (typeof TextEncoder === 'function') return new TextEncoder().encode(text);
+    var raw = unescape(encodeURIComponent(text)), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function latin1Bytes(text) {
+    var out = new Uint8Array(text.length);
+    for (var i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 255;
+    return out;
+  }
+
+  function joinBytes(parts) {
+    var size = 0, at = 0;
+    parts.forEach(function (p) { size += p.length; });
+    var out = new Uint8Array(size);
+    parts.forEach(function (p) { out.set(p, at); at += p.length; });
+    return out;
+  }
+
+  // One chunk: length, type, data, CRC of type and data.
+  function pngChunk(type, data) {
+    var body = joinBytes([latin1Bytes(type), data]), out = new Uint8Array(body.length + 8);
+    var view = new DataView(out.buffer);
+    view.setUint32(0, data.length);
+    out.set(body, 4);
+    view.setUint32(4 + body.length, crc32(body));
+    return out;
+  }
+
+  function textChunk(key, text) {
+    return pngChunk('tEXt', joinBytes([latin1Bytes(key), new Uint8Array(1), latin1Bytes(text)]));
+  }
+
+  function intlChunk(key, lang, text) {
+    return pngChunk('iTXt', joinBytes([latin1Bytes(key), new Uint8Array(3), latin1Bytes(lang),
+      new Uint8Array(2), utf8Bytes(text)]));
+  }
+
+  function xmlText(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function xmpPacket(title) {
+    var alt = function (text) { return '<rdf:Alt><rdf:li xml:lang="x-default">' + xmlText(text) + '</rdf:li></rdf:Alt>'; };
+    return '<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>\n' +
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/"' +
+      ' xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"' +
+      ' xmp:CreatorTool="TINOLI, tinoli.ru" photoshop:Credit="TINOLI, tinoli.ru"' +
+      ' photoshop:Source="' + PNG_SOURCE + '">' +
+      '<dc:title>' + alt(title) + '</dc:title><dc:rights>' + alt(PNG_COPYRIGHT) + '</dc:rights>' +
+      '</rdf:Description></rdf:RDF></x:xmpmeta>\n<?xpacket end="r"?>';
+  }
+
+  function labelledPng(bytes, title) {
+    var SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (bytes.length < 33) return null;       // shorter than the signature and IHDR
+    for (var i = 0; i < 8; i++) if (bytes[i] !== SIGNATURE[i]) return null;
+    var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    var after = 8 + 12 + view.getUint32(8);    // the end of IHDR
+    if (view.getUint32(12) !== 0x49484452 || after > bytes.length) return null;
+    var chunks = [
+      textChunk('Software', 'TINOLI (tinoli.ru)'),
+      textChunk('Source', PNG_SOURCE),
+      intlChunk('Title', 'ru', title),
+      intlChunk('Description', 'ru', 'Вышито бисером на tinoli.ru. There Is No Other Like It.'),
+      intlChunk('Copyright', 'ru', PNG_COPYRIGHT),
+      intlChunk('XML:com.adobe.xmp', '', xmpPacket(title))
+    ];
+    return joinBytes([bytes.subarray(0, after)].concat(chunks, [bytes.subarray(after)]));
+  }
+
+  // The file gets its label right after IHDR. Whatever fails, the picture itself is kept.
+  function signPicture(blob, title, done) {
+    var finished = false;
+    var finish = function (result) { if (!finished) { finished = true; done(result); } };
+    try {
+      if (typeof FileReader !== 'function' || typeof Uint8Array === 'undefined') { finish(blob); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var signed = labelledPng(new Uint8Array(reader.result), title);
+          finish(signed ? new Blob([signed], { type: 'image/png' }) : blob);
+        } catch (err) { finish(blob); }
+      };
+      reader.onerror = function () { finish(blob); };
+      reader.readAsArrayBuffer(blob);
+    } catch (err) { finish(blob); }
   }
 
   // ---------------------------------------------------------------- the case: two modes
@@ -1910,9 +2143,16 @@
     refreshCase(app);
   }
 
+  var HAND_FONT = '400 100px "Marck Script"';
+
+  // True when the handwriting is there to draw the letters of text (or nothing can tell).
+  function handReady(text) {
+    try { return !document.fonts || !document.fonts.check || document.fonts.check(HAND_FONT, text); } catch (err) { return true; }
+  }
+
   // The monogram: the initials form and the medallion they are stitched into.
   function monogramMode(app, input) {
-    var mode = { text: '', picture: null, file: 'tinoli-monogram.png' };
+    var mode = { text: '', picture: null, file: 'tinoli-monogram.png', early: false, stamp: 0 };
     mode.ready = function () { return !!mode.text; };
     mode.address = function () { return pageUrl() + (mode.text ? '?m=' + encodeURIComponent(mode.text) : ''); };
     mode.shareTitle = function () { return 'Монограмма «' + mode.text + '», вышитая бисером — TINOLI'; };
@@ -1922,9 +2162,9 @@
     // animation does not share its first frames with a second, larger embroidery.
     mode.getPicture = function (done) {
       if (mode.picture || !mode.text) { done(mode.picture); return; }
-      var wanted = mode.text;
+      var wanted = mode.text, stamp = mode.stamp;
       monogramPicture({ mode: 'monogram', text: wanted }, function (blob) {
-        if (mode.text !== wanted) { done(null); return; }
+        if (mode.text !== wanted || mode.stamp !== stamp) { done(null); return; }
         mode.picture = blob;
         done(blob);
       });
@@ -1933,10 +2173,13 @@
       var keepRing = !!app.run && app.run.opts.mode !== 'portrait';
       mode.text = next;
       mode.picture = null;
+      mode.stamp++;
+      // letters sampled before the handwriting came are stitched once more when it arrives
+      mode.early = !!next && !handReady(next);
       var opts = {
         mode: next ? 'monogram' : 'mark', text: next, keepRing: keepRing,
         onCount: function (n) { setCaption(app.caption, next ? monogramNote(n) : markNote(n)); },
-        onDone: function () { mode.getPicture(function () {}); }
+        onDone: function () { if (!mode.early) mode.getPicture(function () {}); }
       };
       beginRun(app, opts);
     };
@@ -1944,6 +2187,11 @@
       app.stage.classList.remove('is-framing');
       app.stage.removeAttribute('tabindex');
       mode.stitch(mode.text);
+    };
+    // The handwriting has come: initials stitched without it are stitched again, and the
+    // picture kept for saving is dropped with them.
+    mode.refont = function () {
+      if (mode.early && app.mode === 'monogram' && mode.text) mode.stitch(mode.text);
     };
     app.form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -2024,14 +2272,15 @@
     input.value = first;
     app.modes.monogram.text = first;
     var name = app.modes.portrait && window.location.hash === PORTRAIT_HASH ? 'portrait' : 'monogram';
-    // The letters are sampled from the site's font: wait for both of its alphabets.
-    // A font that is slow to come must not leave the case empty: after 2.5 s the letters
-    // are sampled from whatever the browser has. A portrait has no letters to wait for.
+    // The letters are sampled from the handwriting, which is asked for on every visit (both
+    // alphabets). A font that is slow to come must not leave the case empty: after 2.5 s the
+    // letters are sampled from whatever the browser has, and again when the font arrives.
+    // A portrait has no letters to wait for.
     var begin = function () { if (!app.begun) setMode(app, name, true); };
-    if (name === 'monogram' && document.fonts && document.fonts.load) {
-      document.fonts.load('500 100px Jost', 'AЯ').then(begin, begin);
-      setTimeout(begin, 2500);
-    } else begin();
+    var wait = document.fonts && document.fonts.load ? document.fonts.load(HAND_FONT, 'AЯ') : null;
+    if (wait) wait.then(function () { begin(); app.modes.monogram.refont(); }, begin);
+    if (name === 'monogram' && wait) setTimeout(begin, 2500);
+    else begin();
     return function (found) { app.channel = found || null; refreshAsk(app); };
   }
 

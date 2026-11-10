@@ -4,7 +4,18 @@
    Тёмная тема — единственная, это решение концепции (docs/redesign/DIRECTION.md).
    ============================================================ */
 
-/* ---------- Fonts: self-hosted, Latin + Cyrillic, OFL ---------- */
+/* ---------- Fonts: self-hosted, Latin + Cyrillic, OFL ----------
+   Jost: Copyright 2020 The Jost Project Authors. Noto Serif Display (here "TINOLI Display"):
+   Copyright Google Inc. Marck Script: Copyright (c) 2011, Denis Masharov and Marck Fogel, with
+   Reserved Font Name "Marck Script"; the file is the original font, only compressed. All three
+   under the SIL Open Font License 1.1, https://openfontlicense.org */
+@font-face {
+  font-family: "Marck Script";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(../fonts/marck-script.woff2) format("woff2");
+}
 @font-face {
   font-family: "Jost";
   font-style: normal;
@@ -72,6 +83,7 @@
   --accent-ink: #120b13;
 
   --f-text: "Jost", "Jost Fallback", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --f-hand: "Marck Script", "TINOLI Display", "TINOLI Display Fallback", Georgia, serif;
   --f-display: "TINOLI Display", "TINOLI Display Fallback", Georgia, "Times New Roman", serif;
 
   --t-hero: clamp(2.5rem, min(4.6vw, 9vh), 4rem);
@@ -604,7 +616,7 @@ button { font: inherit; color: inherit; }
 .monolink__ring path { fill: var(--ink); }
 .monolink__ring b {
   position: absolute; left: 0; right: 0; top: 51.5%; transform: translateY(-50%); text-align: center;
-  font: 500 1.25rem/1 var(--f-text); color: var(--accent);
+  font: 400 1.7rem/1 var(--f-hand); color: var(--accent);
   opacity: 0; transition: opacity .6s var(--ease);
 }
 .monolink__ring b.is-on { opacity: 1; }
