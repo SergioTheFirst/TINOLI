@@ -521,13 +521,16 @@
     this.tones = {};
     this.finished = false;
     this.twinkleDone = false;
+    this.gemAt = 420;        // ms at which the crystal is set
   }
 
   Embroidery.prototype.measure = function () {
-    var rect = this.canvas.getBoundingClientRect();
+    // A picture made for saving has a size of its own; a canvas on the page takes its box.
+    var fixed = this.opts.size;
+    var rect = fixed ? { width: fixed.w, height: fixed.h } : this.canvas.getBoundingClientRect();
     this.w = Math.max(1, Math.round(rect.width));
     this.h = Math.max(1, Math.round(rect.height));
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.dpr = fixed ? 1 : Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
     this.ctx = this.canvas.getContext('2d');
@@ -594,6 +597,85 @@
     this.beads = beads;
     this.ground = null;
     this.endT = 0;
+    return beads.length;
+  };
+
+  // Where the beads of the initials go. The letters are drawn in the site's own grotesque
+  // (it has both alphabets), fitted into a circle of radius rin and sampled on a hexagonal
+  // grid of the bead pitch. Positions are relative to the centre of the circle.
+  function letterCells(text, rin, pitch) {
+    var chars = text.split('');
+    if (!chars.length || rin < pitch * 4) return [];
+    var REF = 200;           // the letters are measured at this size, then scaled to fit
+    var font = function (px) { return '500 ' + px + 'px Jost, "Jost Fallback", system-ui, sans-serif'; };
+    var probe = document.createElement('canvas').getContext('2d');
+    probe.font = font(REF);
+    var gap = REF * 0.07, width = -gap, up = 0, down = 0;
+    var glyphs = chars.map(function (ch) {
+      var m = probe.measureText(ch);
+      var left = m.actualBoundingBoxLeft || 0;
+      var w = left + (m.actualBoundingBoxRight || m.width);
+      up = Math.max(up, m.actualBoundingBoxAscent || REF * 0.7);
+      down = Math.max(down, m.actualBoundingBoxDescent || 0);
+      width += w + gap;
+      return { ch: ch, left: left, w: w };
+    });
+    var height = up + down;
+    // The corners of the letters stay inside the circle; a lone narrow letter is not stretched.
+    var fit = Math.min(rin * 0.94 * 2 / Math.sqrt(width * width + height * height), rin * 1.3 / height);
+
+    var side = Math.ceil(rin * 2), mid = side / 2;
+    var mask = document.createElement('canvas');
+    mask.width = mask.height = side;
+    var g = mask.getContext('2d', { willReadFrequently: true });
+    g.font = font(REF * fit);
+    g.textBaseline = 'alphabetic';
+    var x = mid - width * fit / 2, base = mid - height * fit / 2 + up * fit;
+    glyphs.forEach(function (gl) {
+      g.fillText(gl.ch, x + gl.left * fit, base);
+      x += (gl.w + gap) * fit;
+    });
+    var px = g.getImageData(0, 0, side, side).data;
+    var inked = function (dx, dy) {
+      var ix = Math.round(mid + dx), iy = Math.round(mid + dy);
+      return ix >= 0 && iy >= 0 && ix < side && iy < side && px[(iy * side + ix) * 4 + 3] > 96;
+    };
+    // A bead sits where most of its place is letter: the centre and four points round it.
+    var near = pitch * 0.3;
+    var covered = function (dx, dy) {
+      var n = (inked(dx, dy) ? 1 : 0) + (inked(dx - near, dy - near) ? 1 : 0) + (inked(dx + near, dy - near) ? 1 : 0) +
+        (inked(dx - near, dy + near) ? 1 : 0) + (inked(dx + near, dy + near) ? 1 : 0);
+      return n >= 3;
+    };
+    var rowH = pitch * 0.88, rows = Math.ceil(rin / rowH), cols = Math.ceil(rin / pitch) + 1, cells = [];
+    for (var j = -rows; j <= rows; j++) {
+      var shift = j % 2 ? pitch / 2 : 0;
+      for (var i = -cols; i <= cols; i++) {
+        var dx = i * pitch + shift, dy = j * rowH;
+        if (covered(dx, dy)) cells.push({ x: dx, y: dy });
+      }
+    }
+    return cells;
+  }
+
+  // The mark as a medallion: its ring and crystal, and inside them one or two initials in
+  // beads. The ring is stitched first (or stands already, when only the letters change),
+  // then the letters, from left to right.
+  Embroidery.prototype.buildMonogram = function () {
+    this.buildMark();
+    var k = Math.min(this.w, this.h) / MARK_REF, s = 7.2;
+    var keep = !!this.opts.keepRing, QUICK = 0.62, LETTERS_MS = 1900;
+    this.beads.forEach(function (b) { b.t0 = keep ? -240 : b.t0 * QUICK; });
+    this.gemAt = keep ? 0 : 420 * QUICK;
+    var from = keep ? 200 : this.endT * QUICK - 100;
+    var cells = letterCells(String(this.opts.text || ''), (MARK_REF * 0.34 - s * 2.6) * k, s * k);
+    var cx = this.w / 2, cy = this.h / 2 + s * k, beads = this.beads;
+    cells.forEach(function (c, i) { c.key = c.x + (wobble(i, 5) - 0.5) * s * k * 3; });
+    cells.sort(function (a, b) { return a.key - b.key; });
+    cells.forEach(function (c, i) {
+      beads.push(sewnBead(cx + c.x, cy + c.y, s * 0.44 * k, 'gold', from + (i / cells.length) * LETTERS_MS, beads.length));
+    });
+    this.endT = from + LETTERS_MS + 260;
     return beads.length;
   };
 
@@ -667,7 +749,8 @@
 
   Embroidery.prototype.prepare = function () {
     var mode = this.opts.mode;
-    var count = mode === 'mark' ? this.buildMark() : mode === 'macro' ? this.buildMacro() : this.sampleImage();
+    var count = mode === 'mark' ? this.buildMark() : mode === 'macro' ? this.buildMacro()
+      : mode === 'monogram' ? this.buildMonogram() : this.sampleImage();
     if (!count) return 0;
     var maxR = 0;
     this.beads.forEach(function (bd) { if (bd.r > maxR) maxR = bd.r; });
@@ -794,7 +877,7 @@
   // One frame at time t (ms). t = Infinity draws the finished embroidery.
   Embroidery.prototype.frame = function (t) {
     var ctx = this.ctx, active = [], head = null;
-    if (this.gem && !this.gemDone && t >= 420) { this.drawGem(this.bctx, 1); this.gemDone = true; }
+    if (this.gem && !this.gemDone && t >= this.gemAt) { this.drawGem(this.bctx, 1); this.gemDone = true; }
     for (var i = 0; i < this.beads.length; i++) {
       var b = this.beads[i];
       if (b.done || t < b.t0) continue;
@@ -807,9 +890,9 @@
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.drawImage(this.base, 0, 0);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (this.gem && !this.gemDone && t > 0) this.drawGem(ctx, Math.min(1, t / 420));
+    if (this.gem && !this.gemDone && t > 0) this.drawGem(ctx, Math.min(1, t / this.gemAt));
     for (var j = 0; j < active.length; j += 2) this.drawBead(ctx, active[j], active[j + 1]);
-    if (head && this.opts.mode === 'mark') this.drawNeedle(ctx, head.x, head.y, head.r);
+    if (head && (this.opts.mode === 'mark' || this.opts.mode === 'monogram')) this.drawNeedle(ctx, head.x, head.y, head.r);
   };
 
   Embroidery.prototype.run = function () {
@@ -822,7 +905,7 @@
     } catch (err) {
       return false;
     }
-    this.watchSize();
+    if (!this.opts.size) this.watchSize();
     if (reduceMotion.matches || this.opts.still) {
       this.frame(Infinity);
       this.finish(true);
@@ -841,8 +924,19 @@
 
   Embroidery.prototype.finish = function (instant) {
     this.finished = true;
-    if (this.gem) this.twinkle();
+    if (this.gem && !this.opts.size) this.twinkle();
     if (this.opts.onDone) this.opts.onDone(instant);
+  };
+
+  // Ends whatever this embroidery still animates, so its canvas can be stitched anew.
+  Embroidery.prototype.stop = function () {
+    this.stopped = true;
+    cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    if (this.stopTwinkle) this.stopTwinkle();
+    if (this.sizeWatch) { this.sizeWatch.disconnect(); this.sizeWatch = null; }
+    if (this.unwatch) { this.unwatch(); this.unwatch = null; }
+    this.opts.onDone = null;
   };
 
   // A new size (rotation, window resize, zoom): redraw the finished state at once.
@@ -853,6 +947,7 @@
     this.sizeWatch = new ResizeObserver(function () {
       cancelAnimationFrame(pending);
       pending = requestAnimationFrame(function () {
+        if (self.stopped) return;
         var r = self.canvas.getBoundingClientRect();
         if (Math.abs(r.width - lastW) < 4 && Math.abs(r.height - lastH) < 4) return;
         if (r.width < 1 || r.height < 1) return;
@@ -866,6 +961,7 @@
   };
 
   Embroidery.prototype.rebuild = function () {
+    if (this.stopped) return;
     cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.stopTwinkle) this.stopTwinkle();
@@ -942,24 +1038,49 @@
       restore();
     };
     this.resume();
+    var seen = null;
     if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (entries) {
+      seen = new IntersectionObserver(function (entries) {
         self.visible = entries[entries.length - 1].isIntersecting;
         if (self.visible) self.resume();
-      }).observe(this.canvas);
+      });
+      seen.observe(this.canvas);
     }
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) self.resume(); });
-    if (reduceMotion.addEventListener) {
-      reduceMotion.addEventListener('change', function () { if (reduceMotion.matches) self.stopTwinkle(); });
-    }
+    var onShown = function () { if (!document.hidden) self.resume(); };
+    var onCalm = function () { if (reduceMotion.matches) self.stopTwinkle(); };
+    document.addEventListener('visibilitychange', onShown);
+    if (reduceMotion.addEventListener) reduceMotion.addEventListener('change', onCalm);
+    // What stop() takes down, so an embroidery that was replaced holds on to nothing.
+    this.unwatch = function () {
+      if (seen) seen.disconnect();
+      document.removeEventListener('visibilitychange', onShown);
+      if (reduceMotion.removeEventListener) reduceMotion.removeEventListener('change', onCalm);
+    };
   };
 
   // ---------------------------------------------------------------- home: hero
-  // The motto stays in English and is marked so for screen readers.
+  // The motto spells the name: the initials of its words stand a shade brighter.
+  // Screen readers get the plain English phrase.
+  var MOTTO = 'There Is No Other Like It';
+
+  function mottoNode(dot) {
+    var box = el('span', { lang: 'en', className: 'motto' });
+    box.appendChild(el('span', { className: 'visually-hidden' }, MOTTO + (dot ? '.' : '')));
+    var seen = el('span', { 'aria-hidden': 'true' });
+    MOTTO.split(' ').forEach(function (word, i) {
+      if (i) seen.appendChild(document.createTextNode(' '));
+      seen.appendChild(el('b', null, word.charAt(0)));
+      seen.appendChild(document.createTextNode(word.slice(1)));
+    });
+    if (dot) seen.appendChild(document.createTextNode('.'));
+    box.appendChild(seen);
+    return box;
+  }
+
   function setCaption(node, note) {
     if (!node) return;
     node.textContent = '';
-    node.appendChild(el('span', { lang: 'en' }, 'There Is No Other Like It' + (note ? '.' : '')));
+    node.appendChild(mottoNode(!!note));
     if (note) node.appendChild(document.createTextNode(' ' + note));
   }
 
@@ -979,6 +1100,8 @@
     }
     var note = document.querySelector('[data-hero-note]');
     if (note) note.hidden = false;
+    var mono = document.querySelector('[data-hero-mono]');
+    if (mono) mono.hidden = false;
   }
 
   // failed: the catalogue could not be loaded. The mark is stitched all the same, but the
@@ -1043,6 +1166,7 @@
       var link = featured.querySelector('[data-featured-link]');
       link.textContent = typo(work.title);
       link.href = '/works/' + encodeURIComponent(work.id) + '/';
+      link.addEventListener('click', function () { nameCase(stage); });
       var pass = featured.querySelector('[data-featured-passport]');
       passportRows(work).forEach(function (row) { pass.appendChild(row); });
     }
@@ -1125,6 +1249,7 @@
       stage.appendChild(el('span', { className: 'vitrine__shade', 'aria-hidden': 'true' }));
       stage.appendChild(el('span', { className: 'vitrine__glare', 'aria-hidden': 'true' }));
       link.appendChild(stage);
+      link.addEventListener('click', function () { nameCase(stage); });
       link.appendChild(el('h3', { className: 'tile__title display' }, typo(work.title)));
       link.appendChild(el('p', { className: 'tile__meta' }, workMeta(work)));
       article.appendChild(link);
@@ -1188,6 +1313,7 @@
     var stage = viewer.querySelector('.viewer__stage');
     var images = viewer.querySelectorAll('.viewer__img');
     var tabs = viewer.querySelectorAll('.viewer__tabs [data-shot]');
+    var beforeShow = null;
     stage.appendChild(el('span', { className: 'vitrine__glare', 'aria-hidden': 'true' }));
 
     // Each shot stands on its own ground in the case; the wrapper fades in and out.
@@ -1201,6 +1327,7 @@
     });
 
     function show(shot) {
+      if (beforeShow) beforeShow();
       images.forEach(function (im) {
         var on = im.getAttribute('data-shot') === shot;
         im.classList.toggle('is-on', on);
@@ -1214,7 +1341,10 @@
       t.addEventListener('click', function () { show(t.getAttribute('data-shot')); });
     });
 
-    if (!finePointer.matches) return;
+    if (!finePointer.matches) {
+      beforeShow = touchViewer(viewer, stage, tabs, current, show);
+      return;
+    }
     var lens = el('div', { className: 'loupe', 'aria-hidden': 'true' });
     stage.appendChild(lens);
     var ZOOM = 2.6, SIZE = 200;
@@ -1263,6 +1393,327 @@
     });
   }
 
+  // On a phone: a touch brings the photo closer, a finger moves it about, a second touch
+  // lets it go; a sweep across the case changes the shot. Returns a function that lets
+  // the photo go, for the moment the shot changes.
+  function touchViewer(viewer, stage, tabs, current, show) {
+    var ZOOM = 2.6, SWEEP = 40, SLOP = 8;
+    var HINTS = [
+      typo('Коснитесь фото, чтобы рассмотреть вышивку'),
+      typo('Ведите пальцем по фото. Коснитесь ещё раз, чтобы отдалить')
+    ];
+    var hint = el('p', { className: 'viewer__hint', 'aria-hidden': 'true' }, HINTS[0]);
+    var zoomed = false, tx = 0, ty = 0, start = null, moved = false;
+    viewer.appendChild(hint);
+    stage.classList.add('is-touch');
+
+    function clamp(v, min) { return Math.max(min, Math.min(0, v)); }
+    function place() {
+      current().parentNode.style.transform = zoomed ? 'translate(' + tx + 'px,' + ty + 'px) scale(' + ZOOM + ')' : '';
+    }
+    function zoom(on, px, py) {
+      var r = stage.getBoundingClientRect();
+      zoomed = on;
+      if (on) {
+        tx = clamp(px * (1 - ZOOM), r.width * (1 - ZOOM));
+        ty = clamp(py * (1 - ZOOM), r.height * (1 - ZOOM));
+      }
+      stage.classList.toggle('is-zoomed', on);
+      hint.textContent = HINTS[on ? 1 : 0];
+      place();
+    }
+    function step(dir) {
+      var order = Array.prototype.map.call(tabs, function (t) { return t.getAttribute('data-shot'); });
+      var next = order.indexOf(current().getAttribute('data-shot')) + dir;
+      if (next >= 0 && next < order.length) show(order[next]);
+    }
+
+    // Only the first finger moves the photo; a second one is the browser's own pinch.
+    stage.addEventListener('pointerdown', function (e) {
+      if (!e.isPrimary) return;
+      start = { x: e.clientX, y: e.clientY, tx: tx, ty: ty };
+      moved = false;
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!start || !e.isPrimary) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (Math.abs(dx) > SLOP || Math.abs(dy) > SLOP) moved = true;
+      if (!zoomed || !moved) return;
+      var r = stage.getBoundingClientRect();
+      tx = clamp(start.tx + dx, r.width * (1 - ZOOM));
+      ty = clamp(start.ty + dy, r.height * (1 - ZOOM));
+      stage.classList.add('is-panning');
+      place();
+    });
+    var release = function (e) {
+      if (!start || !e.isPrimary) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      start = null;
+      stage.classList.remove('is-panning');
+      if (zoomed || e.type === 'pointercancel') return;
+      if (Math.abs(dx) > SWEEP && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+    };
+    stage.addEventListener('pointerup', release);
+    stage.addEventListener('pointercancel', release);
+    stage.addEventListener('click', function (e) {
+      if (moved) return;
+      var r = stage.getBoundingClientRect();
+      zoom(!zoomed, e.clientX - r.left, e.clientY - r.top);
+    });
+    // A turned phone gives the case a new size: the photo stays inside it.
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(function () {
+        if (!zoomed) return;
+        var r = stage.getBoundingClientRect();
+        tx = clamp(tx, r.width * (1 - ZOOM));
+        ty = clamp(ty, r.height * (1 - ZOOM));
+        place();
+      }).observe(stage);
+    }
+    return function () { if (zoomed) zoom(false, 0, 0); };
+  }
+
+  // ---------------------------------------------------------------- from page to page
+  // The case that was clicked travels to the work page: it takes the name the viewer's
+  // stage has there, and only one case carries it at a time.
+  function nameCase(node) {
+    document.querySelectorAll('.is-travelling').forEach(function (n) { n.classList.remove('is-travelling'); });
+    node.classList.add('is-travelling');
+  }
+
+  // Where the browser knows how, a page of the site is fetched as soon as its link is
+  // about to be followed, so it opens at once.
+  function initPrefetch() {
+    var S = window.HTMLScriptElement;
+    if (!S || !S.supports || !S.supports('speculationrules')) return;
+    var rules = el('script', { type: 'speculationrules' });
+    rules.textContent = JSON.stringify({
+      prefetch: [{ where: { and: [{ href_matches: '/*' }, { not: { href_matches: '/classic/*' } }] }, eagerness: 'moderate' }]
+    });
+    document.head.appendChild(rules);
+  }
+
+  // ---------------------------------------------------------------- writing, passing on
+  // The address of this page as the site knows it (never a preview copy's).
+  function pageUrl() {
+    var link = document.querySelector('link[rel="canonical"]');
+    return (link && link.href) || window.location.href.split(/[?#]/)[0];
+  }
+
+  // The first channel opened with the subject already named: a draft in Telegram, a
+  // letter with its subject. No other channel can carry a draft.
+  function draftHref(channel, what, url) {
+    if (!channel) return null;
+    var text = 'Здравствуйте! Пишу о ' + what + ': ' + url;
+    if (/^https:\/\/(t|telegram)\.me\//i.test(channel.href)) {
+      var base = channel.href.split('#')[0];   // a draft after a fragment would be lost
+      return base + (base.indexOf('?') === -1 ? '?' : '&') + 'text=' + encodeURIComponent(text);
+    }
+    if (/^mailto:/i.test(channel.href)) {
+      return channel.href + '?subject=' + encodeURIComponent('О ' + what) + '&body=' + encodeURIComponent(text);
+    }
+    return null;
+  }
+
+  function pointTo(link, href) {
+    var extra = linkAttrs(href);
+    link.href = href;
+    if (extra.target) { link.target = extra.target; link.rel = extra.rel; }
+    else { link.removeAttribute('target'); link.removeAttribute('rel'); }
+  }
+
+  // «Поделиться»: the system sheet on a phone, the address copied on a desktop.
+  // read(done) hands done { title, url } and, where there is one, a picture as files.
+  function shareControl(read) {
+    var sheet = typeof navigator.share === 'function' && !finePointer.matches;
+    var copy = !!(navigator.clipboard && navigator.clipboard.writeText);
+    if (!sheet && !copy) return null;
+    var box = el('span', { className: 'share' });
+    var button = el('button', { type: 'button', className: 'textbtn' }, 'Поделиться');
+    var status = el('span', { className: 'share__status', role: 'status' });
+    var timer = 0;
+    var say = function (text) {
+      status.textContent = text;
+      clearTimeout(timer);
+      timer = setTimeout(function () { status.textContent = ''; }, 2600);
+    };
+    var pass = function (data) {
+      if (sheet) {
+        var files = data.files && navigator.canShare && navigator.canShare({ files: data.files }) ? data.files : null;
+        var pack = files ? { files: files, title: data.title, text: data.title + ' ' + data.url } : { title: data.title, url: data.url };
+        // Closing the sheet without choosing rejects with AbortError: that is not a failure.
+        navigator.share(pack).catch(function (err) {
+          if (!err || err.name !== 'AbortError') say('Не удалось открыть меню');
+        });
+        return;
+      }
+      navigator.clipboard.writeText(data.url).then(
+        function () { say('Ссылка скопирована'); },
+        function () { say('Не удалось скопировать ссылку'); }
+      );
+    };
+    button.addEventListener('click', function () { read(pass); });
+    box.appendChild(button);
+    box.appendChild(status);
+    return box;
+  }
+
+  // A work page: «Написать мастеру» opens the first channel with the work already named
+  // (channel is absent when the config did not load), and beside it the work is passed on.
+  function initAsk(channel) {
+    var box = document.querySelector('.work__ask');
+    var heading = document.querySelector('.work__title');
+    if (!box || !heading) return;
+    var name = heading.textContent.replace(/ /g, ' ').trim();
+    var kind = document.querySelector('.passport dd');
+    var url = pageUrl();
+    var link = box.querySelector('a');
+    var href = draftHref(channel, 'работе «' + name + '»', url);
+    if (href && link) {
+      pointTo(link, href);
+      var note = el('p', { className: 'note' },
+        typo('Откроется ' + (channel.name === 'Почта' ? 'почта' : channel.name) + ' с названием работы.') + ' ');
+      note.appendChild(el('a', { href: '/contact.html' }, 'Другие способы связи'));
+      box.parentNode.insertBefore(note, box.nextSibling);
+    }
+    var share = shareControl(function (done) {
+      done({ title: (kind ? kind.textContent.trim() + ' ' : '') + '«' + name + '» — TINOLI', url: url });
+    });
+    if (share) box.appendChild(share);
+  }
+
+  // ---------------------------------------------------------------- monogram
+  function monogramNote(n) {
+    return typo('Монограмма вышита из ' + formatCount(n) + ' ' + plural(n, 'бусины', 'бусин', 'бусин') + '.');
+  }
+
+  // One or two letters, Russian or Latin; anything else is dropped.
+  function initials(raw) {
+    return String(raw || '').replace(/[^A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase();
+  }
+
+  // The monogram as a picture to keep: the velvet of the case, the medallion, the address.
+  function monogramPicture(text, done) {
+    var W = 1080, H = 1350;
+    var out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    var g = out.getContext('2d');
+    var light = g.createLinearGradient(0, 0, 0, H);
+    light.addColorStop(0, '#261a2b');
+    light.addColorStop(0.6, '#1a111c');
+    light.addColorStop(1, '#150d17');
+    g.fillStyle = light;
+    g.fillRect(0, 0, W, H);
+    var layer = document.createElement('canvas');
+    var run = new Embroidery(layer, { mode: 'monogram', text: text, still: true, size: { w: W, h: H } });
+    if (!run.run()) { done(null); return; }
+    g.drawImage(layer, 0, 0);
+    g.fillStyle = '#9d90a1';
+    g.font = '400 30px Jost, "Jost Fallback", system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.fillText('tinoli.ru · ' + MOTTO, W / 2, H - 64);
+    out.toBlob(function (blob) { done(blob); }, 'image/png');
+  }
+
+  // The monogram page. Returns a setter for the channel «Написать мастеру» opens, which
+  // is known only once the config has come.
+  function initMonogram() {
+    var root = document.querySelector('[data-monogram]');
+    var form = document.querySelector('[data-monogram-form]');
+    var tools = document.querySelector('[data-monogram-tools]');
+    if (!root || !form || !tools) return null;
+    var stage = root.querySelector('.vitrine');
+    var canvas = root.querySelector('.embroidery');
+    var caption = root.querySelector('[data-hero-caption]');
+    var input = form.querySelector('input');
+    var save = tools.querySelector('[data-monogram-save]');
+    var ask = document.querySelector('[data-monogram-ask]');
+    var run = null, text = '', picture = null, channel = null;
+
+    function address() { return pageUrl() + (text ? '?m=' + encodeURIComponent(text) : ''); }
+    function refreshAsk() {
+      if (!ask) return;
+      pointTo(ask, (text && draftHref(channel, 'монограмме «' + text + '»', address())) || '/contact.html');
+    }
+    // The picture is made once the stitching has ended, or at the first call for it: the
+    // animation does not share its first frames with a second, larger embroidery.
+    function withPicture(done) {
+      if (picture || !text) { done(picture); return; }
+      var wanted = text;
+      monogramPicture(wanted, function (blob) {
+        if (text !== wanted) { done(null); return; }
+        picture = blob;
+        done(blob);
+      });
+    }
+    function stitch(next) {
+      var keepRing = !!run;
+      if (run) run.stop();
+      text = next;
+      picture = null;
+      tools.hidden = !text;
+      save.textContent = 'Сохранить картинку';
+      stage.setAttribute('aria-label', text ? 'Монограмма «' + text + '», вышитая бисером' : 'Знак TINOLI, вышитый бисером');
+      run = new Embroidery(canvas, {
+        mode: text ? 'monogram' : 'mark', text: text, keepRing: keepRing,
+        onCount: function (n) { setCaption(caption, text ? monogramNote(n) : markNote(n)); },
+        onDone: function () { withPicture(function () {}); }
+      });
+      if (!run.run()) stage.classList.add('is-fallback');
+      refreshAsk();
+    }
+
+    var share = shareControl(function (done) {
+      withPicture(function (blob) {
+        var data = { title: 'Монограмма «' + text + '», вышитая бисером — TINOLI', url: address() };
+        if (blob && typeof File === 'function') data.files = [new File([blob], 'tinoli-monogram.png', { type: 'image/png' })];
+        done(data);
+      });
+    });
+    if (share) tools.appendChild(share);
+    save.addEventListener('click', function () {
+      withPicture(function (blob) {
+        if (!blob) { save.textContent = 'Не удалось сохранить картинку'; return; }
+        var href = URL.createObjectURL(blob);
+        var a = el('a', { href: href, download: 'tinoli-monogram.png' });
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+      });
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var next = initials(input.value);
+      input.value = next;
+      if (!next) { input.focus(); return; }
+      stitch(next);
+      window.history.replaceState({}, '', '?m=' + encodeURIComponent(next));
+    });
+    input.addEventListener('input', function () {
+      var clean = initials(input.value);
+      if (clean !== input.value) input.value = clean;
+    });
+
+    var first = initials(new URLSearchParams(window.location.search).get('m'));
+    input.value = first;
+    // The letters are sampled from the site's font: wait for both of its alphabets.
+    // A font that is slow to come must not leave the case empty: after 2.5 s the letters
+    // are sampled from whatever the browser has.
+    var begun = false;
+    var begin = function () {
+      if (begun) return;
+      begun = true;
+      stitch(first);
+    };
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load('500 100px Jost', 'AЯ').then(begin, begin);
+      setTimeout(begin, 2500);
+    } else begin();
+    return function (found) { channel = found || null; refreshAsk(); };
+  }
+
   // ---------------------------------------------------------------- boot
   // The browser jumped to #works on the page as it was before the catalogue came;
   // once the hero and the grid are final, land there again.
@@ -1278,14 +1729,27 @@
   function boot() {
     typoTree(document.querySelector('main'));
     typoTree(document.querySelector('.ftr'));
+    document.querySelectorAll('.ftr__motto').forEach(function (p) {
+      p.textContent = '';
+      p.appendChild(mottoNode(false));
+    });
     initHeader();
     initMacroStages();
+    initPrefetch();
     var page = document.body.getAttribute('data-page');
+    var monogramChannel = page === 'monogram' ? initMonogram() : null;
 
     getJSON('/config.json').then(function (cfg) {
       applyConfig(cfg);
       renderChannels(cfg);
-    }).catch(function () { /* the static text stays in place */ });
+      return cfg;
+    }).catch(function () {
+      return null;   // the static text stays in place
+    }).then(function (cfg) {
+      var first = channelsFrom(cfg && cfg.contact)[0];
+      if (page === 'work') initAsk(first);
+      if (monogramChannel) monogramChannel(first);
+    });
 
     if (page === 'work') initViewer();
 
