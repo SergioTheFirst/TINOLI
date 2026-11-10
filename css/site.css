@@ -515,6 +515,56 @@ button { font: inherit; color: inherit; }
 .ftr__legal { display: grid; gap: var(--s-3); font-size: var(--t-small); line-height: 1.6; color: var(--ink-3); }
 .ftr__legal a { color: var(--ink-2); }
 
+/* ---------- The motto spells the name ---------- */
+.motto b { font-weight: 500; color: var(--ink); }
+
+/* ---------- Text buttons, passing a page on ---------- */
+.textbtn {
+  min-height: 40px; padding: 8px 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--t-small); letter-spacing: .02em; color: var(--ink);
+  text-decoration: underline; text-decoration-color: var(--line-2);
+  text-decoration-thickness: 1px; text-underline-offset: .28em;
+  transition: text-decoration-color .2s var(--ease), color .2s var(--ease);
+}
+.textbtn:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.textbtn:disabled { color: var(--ink-3); text-decoration-color: transparent; cursor: default; }
+.share { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); }
+.share__status { font-size: var(--t-meta); color: var(--ink-3); }
+.work__ask, .split__more, .mono__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); }
+.work__ask + .note { margin-top: var(--s-3); }
+
+/* ---------- A photo brought closer by touch ---------- */
+.viewer__stage.is-touch { touch-action: pan-y pinch-zoom; }
+.viewer__stage.is-zoomed { touch-action: pinch-zoom; }
+.viewer__stage.is-touch .viewer__shot {
+  transform-origin: 0 0;
+  transition: opacity .7s var(--ease), filter .7s var(--ease), transform .35s var(--ease);
+}
+.viewer__stage.is-panning .viewer__shot { transition: none; }
+
+/* ---------- Monogram ---------- */
+.mono { margin-top: var(--s-6); }
+.mono__label { display: block; font-size: var(--t-meta); color: var(--ink-3); letter-spacing: .04em; }
+.mono__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-4) var(--s-5); margin-top: var(--s-2); }
+.mono__input {
+  width: 4.6em; min-height: 48px; padding: 0 0 4px; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0;
+  background: none; color: var(--ink);
+  font: 400 1.75rem/1.2 var(--f-text); letter-spacing: .2em; text-transform: uppercase;
+  transition: border-color .2s var(--ease);
+}
+.mono__input:hover, .mono__input:focus { border-bottom-color: var(--accent); }
+.mono__tools { margin-top: var(--s-5); }
+.mono__ask { margin-top: var(--s-5); }
+
+/* ---------- From a tile to its page: the case travels, the header stays ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  .hdr { view-transition-name: hdr; }
+  .viewer__stage, .is-travelling { view-transition-name: work-case; }
+  ::view-transition-group(work-case) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  ::view-transition-old(work-case), ::view-transition-new(work-case) { height: 100%; object-fit: cover; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1023px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
