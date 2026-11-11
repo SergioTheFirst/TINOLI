@@ -354,12 +354,11 @@
     node.classList.add('glint');
   }
 
-  // A root holds a .vitrine, an optional pin button and an optional .shots switch.
+  // A root holds a .vitrine and an optional pin button.
   function initSwap(root, opts) {
     opts = opts || {};
     var stage = root.querySelector('.vitrine');
     var pin = root.querySelector('[data-pin]');
-    var shots = root.querySelectorAll('.shots [data-shot]');
     var hoverTarget = opts.hoverTarget || stage;
     var pinned = false, hovering = false;
 
@@ -368,8 +367,6 @@
       if (pin) pin.setAttribute('aria-pressed', String(pinned));
       if (root.classList.contains('is-alt') === alt) return;
       root.classList.toggle('is-alt', alt);
-      shots.forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-shot') === 'worn') === alt)); });
-      if (opts.onChange) opts.onChange(alt);
       glint(stage);
     }
     function leaveFocus(e) {
@@ -387,13 +384,6 @@
       });
       pin.addEventListener('blur', leaveFocus);
     }
-    shots.forEach(function (b) {
-      b.addEventListener('click', function () {
-        pinned = b.getAttribute('data-shot') === 'worn';
-        hovering = false;
-        apply();
-      });
-    });
     if (hoverTarget) {
       hoverTarget.addEventListener('pointerenter', function (e) {
         if (e.pointerType === 'mouse' && finePointer.matches) { hovering = true; apply(); }
@@ -1508,6 +1498,8 @@
   // The motto spells the name: the initials of its words stand a shade brighter.
   // Screen readers get the plain English phrase.
   var MOTTO = 'There Is No Other Like It';
+  var MARK_LETTER = 'T';   // the letter in the ring of the mark on the home page, in the handwriting
+  var MARK_T_LABEL = 'Знак TINOLI с буквой T, вышитый бисером';
 
   function mottoNode(dot) {
     var box = el('span', { lang: 'en', className: 'motto' });
@@ -1534,8 +1526,8 @@
     return typo('Знак вышит из ' + formatCount(n) + ' ' + plural(n, 'бусины', 'бусин', 'бусин') + '.');
   }
 
-  // With no works yet the collection section steps aside: the vitrine itself says
-  // that the first works will appear in it, and «Работы» leads to the vitrine.
+  // With no works yet the collection section steps aside: the first block itself says that
+  // the first works will appear, and «Работы» leads to it.
   function emptyCollection() {
     var section = document.getElementById('works');
     var hero = document.querySelector('.hero');
@@ -1548,110 +1540,91 @@
     if (note) note.hidden = false;
   }
 
-  // failed: the catalogue could not be loaded. The mark is stitched all the same, but the
-  // collection is not declared empty, so the error under «Работы» stays in view.
-  function initHero(works, failed) {
+  // The field keeps letters only, as they are typed.
+  function lettersOnly(input) {
+    input.addEventListener('input', function () {
+      var clean = initials(input.value);
+      if (clean !== input.value) input.value = clean;
+    });
+  }
+
+  // The first case of the home page: the mark with the handwritten T in its ring, whatever
+  // the catalogue holds; the works begin in the next block. Under the case stands the
+  // monogram form: one or two initials are stitched into the ring in place of the T, here
+  // on the page (owner's requests of 2026-11-11). This page counts its visits, so the
+  // initials stay in the page: they are never put into the address, kept or sent.
+  // The handwriting is waited for up to 2.5 s. A font that is slower, or does not come,
+  // leaves the ring without its T; letters stitched before it came are stitched once more
+  // when it arrives.
+  function initHero() {
     var root = document.querySelector('[data-hero]');
     if (!root) return;
     var stage = root.querySelector('.vitrine');
     var canvas = root.querySelector('.embroidery');
-    var obj = root.querySelector('[data-hero-obj]');
-    var worn = root.querySelector('[data-hero-worn]');
-    var objShot = obj.parentNode, wornShot = worn.parentNode;
     var caption = root.querySelector('[data-hero-caption]');
-    var shots = root.querySelector('.shots');
-    var featured = document.querySelector('[data-featured]');
-    var cta = document.querySelector('[data-hero-cta]');
+    var form = root.querySelector('[data-hero-monogram]');
+    var tools = root.querySelector('[data-hero-tools]');
+    var save = root.querySelector('[data-hero-save]');
+    var reset = root.querySelector('[data-hero-reset]');
+    var run = null, begun = false;
+    // what stands in the ring, whether it is the visitor's, and whether it was drawn without the handwriting
+    var letters = '', own = false, early = false;
 
-    function stitchMark() {
-      objShot.hidden = true;
-      wornShot.hidden = true;
-      if (shots) shots.hidden = true;
-      canvas.classList.remove('is-done');
-      stage.setAttribute('aria-label', 'Знак TINOLI, вышитый бисером');
-      var run = new Embroidery(canvas, {
-        mode: 'mark',
-        onCount: function (n) { setCaption(caption, markNote(n)); }
+    var stitch = function (next, isOwn) {
+      if (run) run.stop();
+      letters = next;
+      own = isOwn;
+      early = !!next && !handReady(next);
+      stage.setAttribute('aria-label', !next ? MARK_LABEL : isOwn ? 'Монограмма «' + next + '», вышитая бисером' : MARK_T_LABEL);
+      run = new Embroidery(canvas, {
+        mode: next ? 'monogram' : 'mark', text: next, keepRing: begun,
+        onCount: function (n) { setCaption(caption, isOwn ? monogramNote(n) : markNote(n)); }
       });
-      if (!run.run()) stage.classList.add('is-fallback');
-    }
-
-    if (!works.length) {
-      if (!failed) {
-        emptyCollection();
-        if (cta) {
-          cta.setAttribute('href', '#contact');
-          cta.textContent = 'Написать мастеру';
-          cta.removeAttribute('data-config');
-        }
-      }
-      stitchMark();
-      return;
-    }
-
-    var work = works[0];
-    var label = kindOf(work) + ' «' + work.title + '»';
-    stage.setAttribute('aria-label', label);
-    obj.alt = '';
-    objShot.hidden = false;
-    setCaption(caption);
-    if (work.filename_hover) {
-      worn.src = img(work.filename_hover);
-      wornShot.hidden = false;
-      watchPhoto(worn, wornShot);
-      if (shots) shots.hidden = false;
-      initSwap(root, {
-        hoverTarget: stage,
-        onChange: function (alt) { stage.setAttribute('aria-label', label + (alt ? ': как носится' : '')); }
-      });
-    }
-    if (featured) {
-      featured.hidden = false;
-      var link = featured.querySelector('[data-featured-link]');
-      link.textContent = typo(work.title);
-      link.href = '/works/' + encodeURIComponent(work.id) + '/';
-      link.addEventListener('click', function () { nameCase(stage); });
-      var pass = featured.querySelector('[data-featured-passport]');
-      passportRows(work).forEach(function (row) { pass.appendChild(row); });
-    }
-
-    var started = false;
-    var startStitch = function () {
-      if (started) return;
-      started = true;
-      var run = new Embroidery(canvas, {
-        mode: 'image',
-        img: obj,
-        onDone: function (instant) {
-          if (instant) { canvas.classList.add('is-done'); return; }
-          setTimeout(function () {
-            glint(stage);
-            canvas.classList.add('is-done');
-          }, 450);
-        }
-      });
-      if (!run.run()) canvas.classList.add('is-done');
+      begun = true;
+      stage.classList.toggle('is-fallback', !run.run());
+      if (tools) tools.hidden = !isOwn;
+      if (save) save.textContent = SAVE_PICTURE;
     };
-    // The photo is placed first, so the beads are laid on exactly its ground.
-    watchPhoto(obj, objShot);
-    obj.addEventListener('load', startStitch, { once: true });
-    // A missing photo must not leave an empty case: stitch the mark instead.
-    obj.addEventListener('error', function () { if (!started) { started = true; stitchMark(); } }, { once: true });
-    obj.src = img(work.filename);
-    if (obj.complete && obj.naturalWidth) startStitch();
-  }
+    // the mark itself: with its T when the handwriting is there, the ring alone when it is not
+    var stitchMark = function () { stitch(handReady(MARK_LETTER) ? MARK_LETTER : '', false); };
 
-  function passportRows(work) {
-    var rows = [['Вид', kindOf(work)]];
-    if (work.materials) rows.push(['Материалы', work.materials]);
-    if (work.size) rows.push(['Размер', work.size]);
-    if (work.year) rows.push(['Год', work.year]);
-    return rows.map(function (r) {
-      var row = el('div', { className: 'passport__row' });
-      row.appendChild(el('dt', null, r[0]));
-      row.appendChild(el('dd', null, typo(String(r[1]))));
-      return row;
+    var wait = askHand();
+    if (!wait) {
+      stitchMark();
+    } else {
+      var plain = setTimeout(function () { if (!begun) stitchMark(); }, 2500);
+      wait.then(function (came) {
+        clearTimeout(plain);
+        if (own) { if (came && early) stitch(letters, true); return; }
+        if (came || !begun) stitchMark();
+      });
+    }
+
+    if (!form) return;
+    var input = form.querySelector('input');
+    lettersOnly(input);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var next = initials(input.value);
+      input.value = next;
+      if (next) stitch(next, true);
+      else if (own) stitchMark();
+      else input.focus();
     });
+    if (save) {
+      save.addEventListener('click', function () {
+        monogramPicture({ mode: 'monogram', text: letters }, function (blob) {
+          if (!blob) { save.textContent = SAVE_FAILED; return; }
+          handFile(blob, 'tinoli-monogram.png');
+        });
+      });
+    }
+    if (reset) {
+      reset.addEventListener('click', function () {
+        input.value = '';
+        stitchMark();
+      });
+    }
   }
 
   // ---------------------------------------------------------------- home: works
@@ -1675,16 +1648,68 @@
       return works.filter(function (w) { return kindKey(w) === current; });
     }
 
+    // The newest work is first laid out in beads and then resolves into its photo: once,
+    // when its tile comes into view. Each piece is embroidered before it is shown in light.
+    // The photo waits unseen under the velvet until the stitching begins.
+    var NEWEST_WAIT_MS = 6000;   // a photo slower than this, once its tile is in view, is simply shown
+    var newestDone = false;      // the effect has been shown to its end, or cannot be shown
+    var newestStop = null;       // takes down what was set up for the tile now in the grid
+
+    function stitchNewest(stage, shot) {
+      if (reduceMotion.matches || !('IntersectionObserver' in window)) { newestDone = true; return; }
+      var im = shot.querySelector('img');
+      var canvas = el('canvas', { className: 'embroidery', 'aria-hidden': 'true' });
+      stage.appendChild(canvas);
+      shot.classList.add('is-waiting');
+      var seen = false, begun = false, run = null, guard = 0;
+      var reveal = function () { shot.classList.remove('is-waiting'); };
+      var done = function () { newestDone = true; canvas.classList.add('is-done'); };
+      var go = function () {
+        if (begun || !seen || !im.complete) return;
+        begun = true;
+        clearTimeout(guard);
+        reveal();
+        if (!im.naturalWidth) { done(); return; }   // the photo did not come: nothing to lay out
+        placePhoto(im, shot);                       // the beads are laid on exactly its ground
+        run = new Embroidery(canvas, {
+          mode: 'image', img: im,
+          onDone: function (instant) {
+            if (instant) { done(); return; }
+            setTimeout(function () { glint(stage); done(); }, 450);
+          }
+        });
+        if (!run.run()) done();
+      };
+      im.addEventListener('load', go, { once: true });
+      im.addEventListener('error', go, { once: true });
+      var watch = new IntersectionObserver(function (entries) {
+        if (!entries[entries.length - 1].isIntersecting) return;
+        watch.disconnect();
+        seen = true;
+        // a photo that hangs must not leave its case empty: it is shown without the stitching
+        guard = setTimeout(function () { if (!begun) { begun = true; reveal(); done(); } }, NEWEST_WAIT_MS);
+        go();
+      }, { threshold: 0.33 });
+      watch.observe(stage);
+      newestStop = function () {
+        watch.disconnect();
+        clearTimeout(guard);
+        if (run) run.stop();
+      };
+    }
+
     function tile(work, eager) {
       var article = el('article', { className: 'tile' });
       var link = el('a', { className: 'tile__link', href: '/works/' + encodeURIComponent(work.id) + '/' });
       var stage = el('div', { className: 'vitrine' });
-      // The link text already names the work, so the photos stay unannounced. Each photo is
-      // placed like the hero's: filling the tile when close to 4:5, otherwise whole.
+      // The link text already names the work, so the photos stay unannounced. Each photo
+      // fills the tile when close to 4:5, otherwise it stands whole.
       // loading comes before src: an image decides on lazy loading when its src is set.
-      stage.appendChild(shotOf('vitrine__shot vitrine__shot--obj', {
+      var shot = shotOf('vitrine__shot vitrine__shot--obj', {
         loading: eager ? 'eager' : 'lazy', decoding: 'async', alt: '', src: img(work.filename)
-      }));
+      });
+      stage.appendChild(shot);
+      if (work === works[0] && !newestDone) stitchNewest(stage, shot);
       if (work.filename_hover) {
         stage.appendChild(shotOf('vitrine__shot vitrine__shot--worn', {
           loading: 'lazy', decoding: 'async', alt: '', src: img(work.filename_hover)
@@ -1716,6 +1741,9 @@
     }
 
     function render(announce) {
+      // the grid is laid out anew: a stitching that waits or runs ends with the tile it was
+      // set up for, and is set up again for the new tile of the newest work
+      if (newestStop) { newestStop(); newestStop = null; }
       grid.textContent = '';
       shown = 0;
       more();
@@ -1926,13 +1954,13 @@
   }
 
   // Where the browser knows how, a page of the site is fetched as soon as its link is
-  // about to be followed, so it opens at once.
+  // about to be followed, so it opens at once. The two previous designs are not fetched ahead.
   function initPrefetch() {
     var S = window.HTMLScriptElement;
     if (!S || !S.supports || !S.supports('speculationrules')) return;
     var rules = el('script', { type: 'speculationrules' });
     rules.textContent = JSON.stringify({
-      prefetch: [{ where: { and: [{ href_matches: '/*' }, { not: { href_matches: '/classic/*' } }] }, eagerness: 'moderate' }]
+      prefetch: [{ where: { and: [{ href_matches: '/*' }, { not: { href_matches: '/classic/*' } }, { not: { href_matches: '/night/*' } }] }, eagerness: 'moderate' }]
     });
     document.head.appendChild(rules);
   }
@@ -2098,10 +2126,11 @@
     out.width = W;
     out.height = H;
     var g = out.getContext('2d');
+    // the velvet of the case on the page (--case-light in css/site.css), a shade deeper at the foot
     var light = g.createLinearGradient(0, 0, 0, H);
-    light.addColorStop(0, '#261a2b');
-    light.addColorStop(0.6, '#1a111c');
-    light.addColorStop(1, '#150d17');
+    light.addColorStop(0, '#35233d');
+    light.addColorStop(0.62, '#231629');
+    light.addColorStop(1, '#1c1121');
     g.fillStyle = light;
     g.fillRect(0, 0, W, H);
     var opts = { still: true, size: { w: W, h: H } };
@@ -2275,7 +2304,7 @@
     var mode = app.modes[app.mode];
     app.tools.hidden = !mode.ready();
     app.clear.hidden = app.mode !== 'portrait';
-    app.save.textContent = 'Сохранить картинку';
+    app.save.textContent = SAVE_PICTURE;
     app.stage.setAttribute('aria-label', mode.ready() ? mode.label() : MARK_LABEL);
     refreshAsk(app);
   }
@@ -2380,24 +2409,29 @@
       refreshCase(app);
       window.history.replaceState({}, '', '?m=' + encodeURIComponent(next));
     });
-    input.addEventListener('input', function () {
-      var clean = initials(input.value);
-      if (clean !== input.value) input.value = clean;
-    });
+    lettersOnly(input);
     return mode;
   }
 
-  // «Сохранить картинку»: the picture of the mode on show, handed to the browser as a file.
+  var SAVE_PICTURE = 'Сохранить картинку';
+  var SAVE_FAILED = 'Не удалось сохранить картинку';
+
+  // Hands a picture to the browser as a file.
+  function handFile(blob, name) {
+    var href = URL.createObjectURL(blob);
+    var a = el('a', { href: href, download: name });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+  }
+
+  // «Сохранить картинку»: the picture of the mode on show.
   function saveCurrent(app) {
     var mode = app.modes[app.mode];
     mode.getPicture(function (blob) {
-      if (!blob) { app.save.textContent = 'Не удалось сохранить картинку'; return; }
-      var href = URL.createObjectURL(blob);
-      var a = el('a', { href: href, download: mode.file });
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+      if (!blob) { app.save.textContent = SAVE_FAILED; return; }
+      handFile(blob, mode.file);
     });
   }
 
@@ -2965,12 +2999,6 @@
     document.querySelectorAll('.monolink').forEach(function (link) {
       var ring = el('span', { className: 'monolink__ring', 'aria-hidden': 'true' });
       ring.appendChild(markRing());
-      if (link.classList.contains('monolink--portrait')) {
-        // the portrait invitation: a round miniature of a portrait in the ring, nothing cycles
-        ring.appendChild(el('img', { className: 'monolink__mini', src: '/img/portrait-mini.jpg', alt: '', width: '29', height: '29', decoding: 'async' }));
-        link.insertBefore(ring, link.firstChild);
-        return;
-      }
       var letters = SAMPLE_LETTERS.map(function (ch, i) {
         var letter = el('b', { className: i ? null : 'is-on' }, ch);
         ring.appendChild(letter);
@@ -3014,79 +3042,6 @@
     });
   }
 
-  // ---------------------------------------------------------------- the portrait on the home page
-  // A portrait stitched from a picture of the site's own, so the tool is one click away. The
-  // picture is asked for when the stage comes within 300 px of the screen, the stitching starts
-  // when a third of the case is in view. A visitor's photo is never touched here.
-  var DEMO_VIEW = { zoom: 1, px: 0.5, py: 0.5, light: 0, across: 84, beads: 'duo', one: false, inverse: false };
-
-  function initPortraitDemo() {
-    var root = document.querySelector('[data-portrait-demo]');
-    if (!root) return;
-    var stage = root.querySelector('.vitrine'), canvas = root.querySelector('.embroidery');
-    var caption = root.querySelector('[data-demo-caption]');
-    var plain = caption ? caption.textContent : '';
-    var photo = null, near = false, seen = false, fontWait = true, run = null, begun = false, late = false;
-
-    // Without the picture the case keeps the mark, and the caption about the picture goes.
-    var fail = function () {
-      stage.classList.add('is-fallback');
-      if (caption) caption.hidden = true;
-    };
-    var go = function () {
-      if (begun || !photo || !seen || fontWait) return;
-      begun = true;
-      run = new Embroidery(canvas, {
-        mode: 'portrait', source: photo, view: DEMO_VIEW,
-        refit: function () { return DEMO_VIEW; },
-        onCount: function (n) {
-          if (caption) caption.textContent = plain + ' Вышито из ' + formatCount(n) + ' ' + plural(n, 'бусины', 'бусин', 'бусин') + '.';
-        },
-        // the handwriting came while the stitching ran: the T is added once it has ended
-        onDone: function () { if (late) { late = false; run.redraw(DEMO_VIEW); } }
-      });
-      if (!run.run()) fail();
-    };
-    // The handwriting is asked for first, so the hallmark has its T. It is not waited for
-    // beyond 2.5 s, and a T that comes later is drawn into the finished portrait.
-    var fontWaited = function () { fontWait = false; go(); };
-    var fontCame = function (came) {
-      fontWaited();
-      if (!came || !run || !run.letterMissing) return;
-      if (run.finished) run.redraw(DEMO_VIEW);
-      else late = true;
-    };
-    var load = function () {
-      if (near) return;
-      near = true;
-      var img = new Image();
-      img.onload = function () {
-        try {
-          var c = document.createElement('canvas');
-          c.width = img.naturalWidth;
-          c.height = img.naturalHeight;
-          c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
-          photo = c;
-        } catch (err) { fail(); return; }
-        go();
-      };
-      img.onerror = fail;
-      img.src = '/img/portrait-demo.jpg';
-      var wait = askHand();
-      if (wait) { wait.then(fontCame); setTimeout(fontWaited, 2500); }
-      else fontWaited();
-    };
-    if (!('IntersectionObserver' in window)) { seen = true; load(); return; }
-    var nearWatch = new IntersectionObserver(function (entries) {
-      if (entries[entries.length - 1].isIntersecting) { nearWatch.disconnect(); load(); }
-    }, { rootMargin: '300px' });
-    var inView = new IntersectionObserver(function (entries) {
-      if (entries[entries.length - 1].isIntersecting) { inView.disconnect(); seen = true; go(); }
-    }, { threshold: 0.33 });
-    nearWatch.observe(root);
-    inView.observe(stage);
-  }
-
   // ---------------------------------------------------------------- boot
   // The browser jumped to #works on the page as it was before the catalogue came;
   // once the hero and the grid are final, land there again.
@@ -3110,7 +3065,7 @@
     initMacroStages();
     initPrefetch();
     initMonoLinks();
-    initPortraitDemo();
+    initHero();
     var page = document.body.getAttribute('data-page');
     var monogramChannel = page === 'monogram' ? initMonogram() : null;
 
@@ -3136,11 +3091,12 @@
       });
       getJSON('/works/works.json').then(normaliseWorks).catch(function () { return null; }).then(function (works) {
         if (works === null) {
+          // the collection is not declared empty, so the error under «Работы» stays in view
           var grid = document.querySelector('[data-grid]');
           if (grid) grid.appendChild(el('p', { className: 'grid__note', role: 'status' }, 'Не удалось загрузить работы. Обновите страницу.'));
-          initHero([], true);
+        } else if (!works.length) {
+          emptyCollection();
         } else {
-          initHero(works);
           initWorks(works);
         }
         if (!moved) realignHash();

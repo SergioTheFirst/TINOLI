@@ -1,7 +1,8 @@
 /* ============================================================
-   TINOLI — ночная мастерская
-   Витрина в темноте, вышивка бисером как схема, точность ювелирного хайтека.
-   Тёмная тема — единственная, это решение концепции (docs/redesign/DIRECTION.md).
+   TINOLI — жемчужный зал
+   Светлая страница цвета жемчуга, чернила цвета баклажана, золото для действий.
+   Бархат остался только внутри витрин и в подвале страницы: на нём лежит бисер.
+   Светлая тема — единственная, решение владельца от 2026-11-11 (docs/redesign/DIRECTION.md).
    ============================================================ */
 
 /* ---------- Fonts: self-hosted, Latin + Cyrillic, OFL ----------
@@ -68,19 +69,28 @@
 
 /* ---------- Tokens ---------- */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Velvet of a night vitrine; platinum ink; one warm metal for actions */
-  --ground: #120b13;
-  --ground-2: #1a111c;
-  --ground-3: #241827;
-  --line: rgba(242, 237, 244, .12);
-  --line-2: rgba(242, 237, 244, .24);
-  --ink: #f2edf4;
-  --ink-2: #c3b8c6;
-  --ink-3: #9d90a1;
-  --accent: #d9c595;
-  --accent-ink: #120b13;
+  /* Pearl paper and aubergine ink; gold for actions (a deep one for words, a lighter one
+     for hairlines); champagne satin for the one tinted room of the page */
+  --ground: #f6f3f7;
+  --satin: #f3ead8;
+  --line: rgba(36, 22, 44, .13);
+  --line-2: rgba(36, 22, 44, .3);
+  --ink: #24162c;
+  --ink-2: #4d3d55;
+  --ink-3: #6d5d75;
+  --accent: #7d5c10;
+  --accent-line: #a8842c;
+
+  /* The velvet of the cases and of the footer, with the platinum and champagne that lie on it */
+  --velvet: #231629;
+  --on-velvet: #f2edf4;
+  --on-velvet-2: #c3b8c6;
+  --on-velvet-3: #9d90a1;
+  --on-velvet-line: rgba(242, 237, 244, .12);
+  --on-velvet-line-2: rgba(242, 237, 244, .24);
+  --gold: #d9c595;
 
   --f-text: "Jost", "Jost Fallback", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
   --f-hand: "Marck Script", "TINOLI Display", "TINOLI Display Fallback", Georgia, serif;
@@ -102,12 +112,19 @@
   --col-gap: clamp(36px, 6vw, 96px);
   --section-y: clamp(48px, 5.5vw, 100px);
   --maxw: 1320px;
-  --r: 2px;
+  /* Corners by rank: the big cases, the tiles of the grid, small boxes; actions are pills */
+  --r: 10px;
+  --r-room: 36px;
+  --r-case: 22px;
+  --r-tile: 16px;
+  --r-pill: 999px;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --hdr-h: 72px;
 
-  /* The glass case: light falls from above onto velvet with a faint pile */
-  --case-light: linear-gradient(180deg, #261a2b 0%, #1a111c 60%);
+  /* The case: a box of velvet standing on the pearl table. Light falls from above onto
+     velvet with a faint pile; under the box lies its shadow, tinted with the ink */
+  --case-drop: 0 1px 2px rgba(36, 22, 44, .16), 0 26px 44px -26px rgba(36, 22, 44, .5);
+  --case-light: linear-gradient(180deg, #35233d 0%, #231629 62%);
   --case-velvet: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .055 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23v)'/%3E%3C/svg%3E");
   --case-edges: inset 0 1px 0 rgba(242, 237, 244, .24), inset 1px 0 0 rgba(242, 237, 244, .12),
     inset -1px 0 0 rgba(242, 237, 244, .12), inset 0 -1px 0 rgba(242, 237, 244, .12);
@@ -135,7 +152,7 @@ body { font-synthesis: none; }
 p { text-wrap: pretty; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .28em; }
 button { font: inherit; color: inherit; }
-::selection { background: var(--accent); color: var(--accent-ink); }
+::selection { background: var(--gold); color: var(--ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 [hidden] { display: none !important; }
 
@@ -148,8 +165,8 @@ button { font: inherit; color: inherit; }
 }
 .skip {
   position: absolute; left: var(--gutter); top: -100px; z-index: 50;
-  background: var(--accent); color: var(--accent-ink); padding: var(--s-2) var(--s-4);
-  text-decoration: none; border-radius: var(--r);
+  background: var(--ink); color: var(--ground); padding: var(--s-2) var(--s-4);
+  text-decoration: none; border-radius: var(--r-pill);
 }
 .skip:focus { top: var(--s-3); }
 .visually-hidden {
@@ -157,7 +174,7 @@ button { font: inherit; color: inherit; }
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
 
-/* Display type: the condensed hairline serif, like engraving on platinum */
+/* Display type: the condensed hairline serif, like engraving on a plate */
 .display {
   font-family: var(--f-display);
   font-weight: 300;
@@ -167,29 +184,36 @@ button { font: inherit; color: inherit; }
 }
 
 /* ---------- Buttons and links ---------- */
+/* The one filled thing on the page: a pill of the ink. Under the pointer it turns to gold. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
-  min-height: 48px; padding: 12px 24px;
-  border: 1px solid var(--accent); border-radius: var(--r);
-  color: var(--accent); background: transparent;
+  min-height: 48px; padding: 12px 28px;
+  border: 1px solid var(--ink); border-radius: var(--r-pill);
+  color: var(--ground); background: var(--ink);
   font: 500 var(--t-small)/1.2 var(--f-text); letter-spacing: .04em;
   text-decoration: none; cursor: pointer;
-  transition: background-color .2s var(--ease), color .2s var(--ease);
+  transition: background-color .25s var(--ease), border-color .25s var(--ease), color .25s var(--ease);
 }
-.btn:hover { background: var(--accent); color: var(--accent-ink); }
+/* a touch leaves :hover stuck, so the gold comes only under a real pointer, or while pressed */
+@media (hover: hover) {
+  .btn:hover { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+}
+.btn:active { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+/* The second action beside it: the same pill, drawn in line */
+.btn--line { background: transparent; color: var(--ink); }
 .link {
   color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2);
   transition: text-decoration-color .2s var(--ease), color .2s var(--ease);
 }
-.link:hover { text-decoration-color: var(--accent); color: var(--accent); }
+.link:hover { text-decoration-color: var(--accent-line); color: var(--accent); }
 
 /* ---------- Header ---------- */
 .hdr {
   position: sticky; top: 0; z-index: 20;
   padding-top: env(safe-area-inset-top, 0px);
-  background: rgba(18, 11, 19, .88);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
-  backdrop-filter: blur(12px) saturate(1.2);
+  background: rgba(246, 243, 247, .86);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
   border-bottom: 1px solid transparent;
   transition: border-color .3s var(--ease);
 }
@@ -212,7 +236,7 @@ button { font: inherit; color: inherit; }
 }
 .nav a::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 1px;
-  background: var(--accent); transform: scaleX(0); transform-origin: left;
+  background: var(--accent-line); transform: scaleX(0); transform-origin: left;
   transition: transform .3s var(--ease);
 }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); }
@@ -221,8 +245,9 @@ button { font: inherit; color: inherit; }
 /* ---------- Vitrine: the stage every work stands on ---------- */
 .vitrine {
   position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden;
-  background: var(--case-velvet), var(--case-light), var(--ground-2);
-  border-radius: var(--r);
+  background: var(--case-velvet), var(--case-light), var(--velvet);
+  border-radius: var(--r-case);
+  box-shadow: var(--case-drop);
   isolation: isolate;
 }
 /* A photo and the ground it stands on, placed by js/site.js: filling the case when the
@@ -231,8 +256,8 @@ button { font: inherit; color: inherit; }
 /* the second half of the ground (the first is the wrapper's own colour); painted before the photo */
 .shot::before { content: ""; position: absolute; inset: 0 0 0 50%; background: var(--ground-b, transparent); }
 .shot.is-ground-y::before { inset: 50% 0 0 0; }
-/* Tiles: each work stands in its own small case, on a velvet mat */
-.tile .shot { inset: 14px; }
+/* Tiles: each work fills its own small case to the rounded edge */
+.tile .vitrine { border-radius: var(--r-tile); }
 .shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .shot > img.is-whole { object-fit: fill; }
 .shot > img.is-feather-x {
@@ -250,8 +275,8 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(104deg, transparent 38%, rgba(255, 246, 236, .18) 47%, rgba(255, 246, 236, .05) 53%, transparent 62%);
 }
 .vitrine__shade {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  box-shadow: var(--case-edges), inset 0 -80px 80px -60px rgba(18, 11, 19, .55);
+  position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit;
+  box-shadow: var(--case-edges), inset 0 -80px 80px -60px rgba(18, 11, 19, .5);
 }
 .is-alt .vitrine__shot--worn { opacity: 1; filter: none; transform: none; }
 .is-alt .vitrine__shot--obj { opacity: 0; filter: blur(3px); }
@@ -259,16 +284,8 @@ button { font: inherit; color: inherit; }
 .vitrine--macro { aspect-ratio: 4 / 3; }
 .vitrine.glint .vitrine__glare { animation: glare 1s var(--ease); }
 @keyframes glare { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
-
-/* Segmented switch between the two shots */
-.shots { display: inline-flex; gap: var(--s-5); }
-.shots button {
-  min-height: 40px; padding: 8px 0; border: 0; background: none; cursor: pointer;
-  font-size: var(--t-small); color: var(--ink-3); letter-spacing: .02em;
-  border-bottom: 1px solid transparent; transition: color .2s var(--ease), border-color .2s var(--ease);
-}
-.shots button:hover { color: var(--ink); }
-.shots button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+/* The photo of the newest work waits unseen under the velvet until it is laid out in beads */
+.shot.is-waiting { visibility: hidden; }
 
 /* ---------- Hero ---------- */
 .hero { padding-block: clamp(20px, min(5vw, 5vh), 72px) var(--section-y); }
@@ -284,6 +301,11 @@ button { font: inherit; color: inherit; }
 @supports (height: 100svh) {
   .hero__frame { width: min(100%, calc((100svh - var(--hdr-h) - 150px) * .8)); }
 }
+/* On the home page the monogram form stands under the case, and fits the first screen with it */
+.hero__frame--home { width: min(100%, calc((100vh - var(--hdr-h) - 290px) * .8)); }
+@supports (height: 100svh) {
+  .hero__frame--home { width: min(100%, calc((100svh - var(--hdr-h) - 290px) * .8)); }
+}
 .hero__frame .vitrine { aspect-ratio: 4 / 5; }
 .hero__vit { position: relative; }
 .hero__caption {
@@ -293,20 +315,15 @@ button { font: inherit; color: inherit; }
 }
 .hero__caption b { font-weight: 500; color: var(--ink-2); }
 .hero__title { font-size: var(--t-hero); line-height: .98; }
-.hero__lead { margin-top: var(--s-5); font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); max-width: 30ch; font-weight: 300; }
+.hero__lead { margin-top: var(--s-5); font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); max-width: 30ch; }
 .hero__note { margin-top: var(--s-4); max-width: 34ch; font-size: var(--t-small); line-height: 1.6; color: var(--ink-3); }
-.hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5); margin-top: var(--s-6); }
-.featured { margin-top: var(--s-7); padding-top: var(--s-5); border-top: 1px solid var(--line); }
-.featured__label { font-size: var(--t-meta); color: var(--ink-3); letter-spacing: .04em; }
-.featured__title { margin-top: var(--s-2); font-size: 2rem; line-height: 1.05; }
-.featured__title a { text-decoration: none; }
-.featured__title a:hover { color: var(--accent); }
-.featured .passport { margin-top: var(--s-4); }
+.hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--s-6); }
+.hero__privacy { margin-top: var(--s-4); max-width: 40ch; font-size: var(--t-small); line-height: 1.6; color: var(--ink-3); }
 
 .embroidery { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; transition: opacity .9s var(--ease); pointer-events: none; }
 .embroidery.is-done { opacity: 0; }
 /* The static mark stands in only where the embroidery cannot run: no scripts, or a failed canvas */
-.mark-fallback { position: absolute; inset: 20%; color: var(--accent); opacity: 0; transition: opacity .6s var(--ease); }
+.mark-fallback { position: absolute; inset: 20%; color: var(--gold); opacity: 0; transition: opacity .6s var(--ease); }
 .mark-fallback svg { width: 100%; height: 100%; }
 @media (scripting: none) { .mark-fallback { opacity: 1; } }
 .vitrine.is-fallback .mark-fallback { opacity: 1; }
@@ -338,7 +355,7 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid transparent; transition: color .2s var(--ease), border-color .2s var(--ease);
 }
 .kinds button:hover { color: var(--ink); }
-.kinds button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.kinds button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent-line); }
 
 /* Grid of works */
 .grid {
@@ -352,14 +369,17 @@ button { font: inherit; color: inherit; }
 .tile__title { margin-top: var(--s-4); font-size: var(--t-h3); line-height: 1.1; transition: color .2s var(--ease); }
 .tile__meta { margin-top: var(--s-1); font-size: var(--t-meta); color: var(--ink-3); letter-spacing: .02em; }
 .tile__link:hover .tile__title { color: var(--accent); }
+/* The switch lies on the photo, so it keeps the colours of the velvet */
 .tile__shot {
-  position: absolute; right: 22px; top: 22px; z-index: 4;
-  min-height: 40px; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: var(--r);
-  background: rgba(18, 11, 19, .86);
-  color: var(--ink-2); font-size: var(--t-meta); letter-spacing: .02em; cursor: pointer;
+  position: absolute; right: 12px; top: 12px; z-index: 4;
+  min-height: 40px; padding: 8px 16px; border: 1px solid var(--on-velvet-line-2); border-radius: var(--r-pill);
+  background: rgba(26, 17, 28, .82);
+  color: var(--on-velvet-2); font-size: var(--t-meta); letter-spacing: .02em; cursor: pointer;
   transition: color .2s var(--ease), border-color .2s var(--ease);
 }
-.tile__shot:hover, .tile__shot[aria-pressed="true"] { color: var(--ink); border-color: var(--accent); }
+.tile__shot:hover, .tile__shot[aria-pressed="true"] { color: var(--on-velvet); border-color: var(--gold); }
+/* on a photo the deep gold of the page would be lost: the ring is champagne, close to the pill */
+.tile__shot:focus-visible { outline-color: var(--gold); outline-offset: 2px; }
 
 .sentinel { height: 1px; }
 .grid__note { grid-column: 1 / -1; max-width: 46ch; color: var(--ink-2); }
@@ -368,32 +388,30 @@ button { font: inherit; color: inherit; }
 .empty {
   display: grid; justify-items: center; text-align: center; gap: var(--s-4);
   padding: clamp(56px, 8vw, 104px) var(--s-5);
-  border: 1px solid var(--line); border-radius: var(--r);
+  border: 1px solid var(--line); border-radius: var(--r-case);
 }
-.empty__mark { width: 72px; color: var(--accent); }
+/* the emblem: the ring and the crystal in the ink, the handwritten T in gold */
+.empty__mark { width: 72px; color: var(--ink); }
+.empty__mark .mark__t { fill: var(--accent-line); }
 .empty__text { max-width: 40ch; color: var(--ink-2); }
 
-/* Master teaser and textual pages: the text column lines up with the hero copy */
+/* The master's room and textual pages: the text column lines up with the words of the first block */
 .split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--col-gap); }
 .quote {
   font-family: var(--f-display); font-weight: 300; font-stretch: 62.5%;
   font-size: clamp(1.9rem, 1.3rem + 2vw, 3rem); line-height: 1.12; letter-spacing: -.012em; color: var(--ink);
 }
-.prose { max-width: 62ch; font-weight: 300; font-size: 1.125rem; line-height: 1.75; color: var(--ink-2); }
+.prose { max-width: 62ch; font-size: 1.125rem; line-height: 1.75; color: var(--ink-2); }
 .prose p + p { margin-top: 1.1em; }
 .prose h2 { margin-top: var(--s-7); margin-bottom: var(--s-4); font-family: var(--f-display); font-weight: 300; font-stretch: 62.5%; font-size: 2rem; line-height: 1.1; }
 .prose a:not(.btn) { color: var(--ink); }
 .split .prose { margin-top: var(--s-5); }
 .split__more { margin-top: var(--s-6); }
-/* On the home page the master's words sit under a clearly larger heading */
-#master .quote { font-size: clamp(1.75rem, 1.3rem + 1.1vw, 2.125rem); line-height: 1.12; }
-/* «Написать мастеру» on the home page: the heading, and under it a case running from the
-   heading's left edge to the hero case's right edge (the hero case is centred in this column) */
+/* On the home page the master's words sit under a clearly larger heading, beside the text */
+#master .quote { font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.5rem); line-height: 1.12; max-width: 17em; }
+/* «Написать мастеру» on the home page: the heading, and under it the close-up of the crystal */
 .split__aside { display: grid; gap: var(--s-6); align-content: start; }
-.split__case { justify-self: start; width: calc((100% + min(100%, max(320px, (100vh - var(--hdr-h) - 150px) * .8))) / 2); }
-@supports (height: 100svh) {
-  .split__case { width: calc((100% + min(100%, max(320px, (100svh - var(--hdr-h) - 150px) * .8))) / 2); }
-}
+.split__case { justify-self: start; width: min(100%, 560px); }
 
 /* Contacts as a sheet */
 .channels { display: grid; max-width: 640px; font-variant-numeric: tabular-nums; }
@@ -405,7 +423,7 @@ button { font: inherit; color: inherit; }
 .channels__name { font-size: var(--t-small); color: var(--ink-3); }
 .channels__value { font-size: 1.125rem; color: var(--ink); overflow-wrap: anywhere; }
 .channels__value a { text-decoration: none; border-bottom: 1px solid var(--line-2); transition: border-color .2s var(--ease), color .2s var(--ease); }
-.channels__value a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.channels__value a:hover { color: var(--accent); border-bottom-color: var(--accent-line); }
 .note { margin-top: var(--s-5); color: var(--ink-3); font-size: var(--t-small); }
 .contact__primary { margin-bottom: var(--s-6); }
 
@@ -416,7 +434,7 @@ button { font: inherit; color: inherit; }
 /* Page heads for inner pages */
 .page { padding-block: clamp(40px, 7vw, 104px) clamp(72px, 9vw, 140px); }
 .page__title { font-size: var(--t-h1); line-height: 1; }
-.page__lead { margin-top: var(--s-5); font-size: var(--t-lead); font-weight: 300; max-width: 46ch; }
+.page__lead { margin-top: var(--s-5); font-size: var(--t-lead); max-width: 46ch; }
 .page__body { margin-top: clamp(40px, 5vw, 72px); }
 
 /* ---------- Work page ---------- */
@@ -440,8 +458,9 @@ button { font: inherit; color: inherit; }
 }
 .viewer { position: relative; width: 100%; }
 .viewer__stage {
-  position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--r);
-  background: var(--case-velvet), var(--case-light), var(--ground-2);
+  position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--r-case);
+  background: var(--case-velvet), var(--case-light), var(--velvet);
+  box-shadow: var(--case-drop);
 }
 /* the edges of the case stay above the photos */
 .viewer__stage::after {
@@ -464,12 +483,12 @@ button { font: inherit; color: inherit; }
   transition: color .2s var(--ease), border-color .2s var(--ease);
 }
 .viewer__tabs button:hover { color: var(--ink); }
-.viewer__tabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.viewer__tabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent-line); }
 /* Without scripts all shots stand one under another, whole */
 @media (scripting: none) {
-  .viewer__stage { aspect-ratio: auto; display: grid; gap: var(--s-3); background: none; }
+  .viewer__stage { aspect-ratio: auto; display: grid; gap: var(--s-3); background: none; box-shadow: none; border-radius: 0; }
   .viewer__stage::after { content: none; }
-  .viewer__img { position: static; opacity: 1; filter: none; aspect-ratio: 4 / 5; background: var(--ground-2); }
+  .viewer__img { position: static; opacity: 1; filter: none; aspect-ratio: 4 / 5; background: var(--velvet); border-radius: var(--r-case); }
   .viewer__tabs { display: none; }
 }
 .viewer .vitrine__glare { z-index: 3; }
@@ -478,15 +497,15 @@ button { font: inherit; color: inherit; }
   position: absolute; z-index: 5; width: 200px; height: 200px; border-radius: 50%;
   pointer-events: none; opacity: 0; transform: translate(-50%, -50%) scale(.92);
   transition: opacity .2s var(--ease), transform .2s var(--ease);
-  box-shadow: 0 0 0 1px rgba(242, 237, 244, .5), 0 18px 48px rgba(0, 0, 0, .55);
-  background-repeat: no-repeat; background-color: var(--ground-2);
+  box-shadow: 0 0 0 1px rgba(242, 237, 244, .6), 0 18px 44px rgba(26, 17, 28, .45);
+  background-repeat: no-repeat; background-color: var(--velvet);
 }
 .loupe.is-on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 .viewer__hint { margin-top: var(--s-2); font-size: var(--t-meta); color: var(--ink-3); }
 .work__info { position: sticky; top: calc(var(--hdr-h) + 24px); }
 .work__title { font-family: var(--f-display); font-weight: 300; font-stretch: 62.5%; font-size: var(--t-h1); line-height: 1; letter-spacing: -.005em; }
 .work__info .passport { margin-top: var(--s-6); }
-.work__story { margin-top: var(--s-6); font-weight: 300; font-size: 1.0625rem; line-height: 1.75; max-width: 56ch; }
+.work__story { margin-top: var(--s-6); font-size: 1.0625rem; line-height: 1.75; max-width: 56ch; }
 .work__story p + p { margin-top: 1em; }
 .work__ask { margin-top: var(--s-6); }
 .siblings {
@@ -500,7 +519,7 @@ button { font: inherit; color: inherit; }
 .sibling:hover .sibling__title { color: var(--accent); }
 
 /* ---------- Legal document ---------- */
-.doc { max-width: 60ch; font-weight: 300; font-size: 1.0625rem; line-height: 1.75; }
+.doc { max-width: 60ch; font-size: 1.0625rem; line-height: 1.75; }
 .doc h2 { margin-top: var(--s-7); margin-bottom: var(--s-3); font-family: var(--f-display); font-weight: 300; font-stretch: 62.5%; font-size: 1.9rem; line-height: 1.1; }
 .doc h3 { margin-top: var(--s-5); margin-bottom: var(--s-2); font-size: 1.0625rem; font-weight: 500; color: var(--ink); }
 .doc p + p { margin-top: .9em; }
@@ -512,13 +531,22 @@ button { font: inherit; color: inherit; }
 .doc .doc__box { margin-top: var(--s-6); padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r); }
 .doc a { color: var(--ink); }
 
-/* ---------- Footer ---------- */
-.ftr { border-top: 1px solid var(--line); padding-block: clamp(56px, 7vw, 96px) calc(40px + env(safe-area-inset-bottom, 0px)); }
-.ftr__in {
-  display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 5fr); gap: var(--s-6);
+/* ---------- Footer: the page ends on a box of velvet, in platinum and champagne ---------- */
+.ftr {
   max-width: calc(var(--maxw) + 2 * var(--gutter)); margin-inline: auto;
+  padding-top: clamp(24px, 3vw, 48px);
+  padding-bottom: calc(max(20px, 2vw) + env(safe-area-inset-bottom, 0px));
   padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
   padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
+}
+.ftr__in {
+  --ink: var(--on-velvet); --ink-2: var(--on-velvet-2); --ink-3: var(--on-velvet-3);
+  --line: var(--on-velvet-line); --line-2: var(--on-velvet-line-2);
+  --accent: var(--gold); --accent-line: var(--gold);
+  display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 5fr); gap: var(--s-6);
+  padding: clamp(28px, 5.2vw, 76px);
+  background: var(--case-velvet), var(--case-light), var(--velvet); color: var(--ink-2);
+  border-radius: var(--r-room);
 }
 .ftr__motto { margin-top: var(--s-3); font-size: var(--t-meta); color: var(--ink-3); letter-spacing: .04em; }
 .ftr__nav { display: grid; align-content: start; }
@@ -538,7 +566,7 @@ button { font: inherit; color: inherit; }
   text-decoration-thickness: 1px; text-underline-offset: .28em;
   transition: text-decoration-color .2s var(--ease), color .2s var(--ease);
 }
-.textbtn:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.textbtn:hover { color: var(--accent); text-decoration-color: var(--accent-line); }
 .textbtn:disabled { color: var(--ink-3); text-decoration-color: transparent; cursor: default; }
 .share { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); }
 .share__status { font-size: var(--t-meta); color: var(--ink-3); }
@@ -564,9 +592,20 @@ button { font: inherit; color: inherit; }
   font: 400 1.75rem/1.2 var(--f-text); letter-spacing: .2em; text-transform: uppercase;
   transition: border-color .2s var(--ease);
 }
-.mono__input:hover, .mono__input:focus { border-bottom-color: var(--accent); }
+.mono__input:hover, .mono__input:focus { border-bottom-color: var(--accent-line); }
 .mono__tools { margin-top: var(--s-5); }
 .mono__ask { margin-top: var(--s-5); }
+/* On the home page the form stands right under the mark: its name, the field and the button;
+   the letters are stitched in the case above, in place of the T */
+.mono--home { margin-top: var(--s-5); }
+.mono__name { display: block; font: 500 var(--t-small)/1.3 var(--f-text); letter-spacing: .04em; color: var(--ink); }
+.mono__hint { display: block; margin-top: 2px; font-size: var(--t-meta); line-height: 1.4; letter-spacing: .02em; color: var(--ink-3); }
+.mono--home .mono__row { margin-top: var(--s-3); }
+/* two pale letters show where to type; they are an example, not a value */
+.mono--home .mono__input::placeholder { color: var(--ink-3); opacity: .4; }
+.mono--home .mono__tools { margin-top: var(--s-4); }
+/* without scripts nothing can be stitched: the form steps aside */
+@media (scripting: none) { .mono--home { display: none; } }
 
 /* ---------- Bead portrait: the second mode of the monogram page ---------- */
 .mono__mode { margin-bottom: var(--s-4); }
@@ -624,7 +663,7 @@ button { font: inherit; color: inherit; }
 .monolink__ring b.is-on { opacity: 1; }
 .monolink__words { display: grid; gap: 2px; }
 .monolink__title {
-  font: 500 var(--t-small)/1.3 var(--f-text); letter-spacing: .04em; color: var(--accent);
+  font: 500 var(--t-small)/1.3 var(--f-text); letter-spacing: .04em; color: var(--ink);
   text-decoration: underline; text-decoration-color: transparent;
   text-decoration-thickness: 1px; text-underline-offset: .28em;
   transition: text-decoration-color .2s var(--ease);
@@ -632,32 +671,18 @@ button { font: inherit; color: inherit; }
 .monolink__note { font-size: var(--t-meta); line-height: 1.4; letter-spacing: .02em; color: var(--ink-3); }
 /* a touch leaves :hover stuck, so the ring is sewn again only under a real pointer or the keyboard */
 @media (hover: hover) {
-  .monolink:hover .monolink__title { text-decoration-color: var(--accent); }
+  .monolink:hover .monolink__title { text-decoration-color: var(--accent-line); }
   .monolink:hover circle { animation: sew .45s var(--ease) both; }
 }
-.monolink:focus-visible .monolink__title { text-decoration-color: var(--accent); }
+.monolink:focus-visible .monolink__title { text-decoration-color: var(--accent-line); }
 .monolink:focus-visible circle { animation: sew .45s var(--ease) both; }
 @keyframes sew { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
-/* the portrait invitation: a round miniature of a portrait where the letters stand */
-.monolink__mini {
-  position: absolute; left: 50%; top: 51.5%; width: 29px; height: 29px; margin: -14.5px 0 0 -14.5px;
-  border-radius: 50%; object-fit: cover; display: block;
-}
-.hero__invites { display: grid; gap: 14px; justify-items: start; }
 @media (max-width: 479px) { .monolink__title, .monolink__note { overflow-wrap: anywhere; } }
 
-/* ---------- The portrait on the home page: a live demo and the way to the tool ---------- */
-.teaser { display: grid; gap: var(--s-6); align-items: center; }
-.teaser__lead { margin-top: var(--s-5); font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); max-width: 34rem; font-weight: 300; }
-.teaser__action { margin-top: var(--s-5); }
-.teaser__copy .note { margin-top: var(--s-4); }
-.teaser__stage { width: 100%; max-width: 420px; justify-self: center; }
-.teaser__stage .vitrine { aspect-ratio: 4 / 5; }
-.teaser__caption { margin-top: var(--s-4); font-size: var(--t-meta); line-height: 1.5; color: var(--ink-3); letter-spacing: .02em; }
-@media (min-width: 900px) {
-  .teaser { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: var(--s-8, 80px); }
-  .teaser__stage { justify-self: end; }
-}
+/* ---------- The one tinted room of the page: champagne satin round the master's words ---------- */
+.room { background: var(--satin); border-radius: var(--r-room); padding: clamp(24px, 5.2vw, 76px); }
+.room__head { display: grid; gap: var(--s-5); align-content: start; }
+.room .prose { margin-top: 0; }
 
 /* ---------- From a tile to its page: the case travels, the header stays ---------- */
 @media (prefers-reduced-motion: no-preference) {
@@ -689,9 +714,6 @@ button { font: inherit; color: inherit; }
   .hero__frame { width: min(100%, 50vh); width: min(100%, 50svh); margin-inline: 0; }
   .hero__frame .vitrine { aspect-ratio: 1 / 1; }
   .hero__copy { padding-top: 0; }
-  /* the shot switch on its own row under the case, the motto below it */
-  .hero__caption { flex-direction: column; align-items: flex-start; gap: var(--s-2); }
-  .hero__caption .shots { order: -1; }
   /* one column: the case never grows past 60% of the screen height, on the page's left edge */
   .viewer { width: min(100%, max(48vh, 320px)); width: min(100%, max(48svh, 320px)); }
   .work__info { position: static; }
@@ -714,8 +736,8 @@ button { font: inherit; color: inherit; }
   .vitrine__shot--worn, .viewer__img, .viewer__shot { filter: none; transform: none; }
 }
 @media (forced-colors: active) {
-  .btn, .tile__shot, .shots button, .kinds button, .viewer__tabs button { border: 1px solid ButtonText; }
-  .kinds button[aria-pressed="true"], .shots button[aria-pressed="true"], .viewer__tabs button[aria-pressed="true"] { border-bottom: 3px solid Highlight; }
+  .btn, .tile__shot, .kinds button, .viewer__tabs button { border: 1px solid ButtonText; }
+  .kinds button[aria-pressed="true"], .viewer__tabs button[aria-pressed="true"] { border-bottom: 3px solid Highlight; }
   .tile__shot[aria-pressed="true"] { border: 2px solid Highlight; }
   .nav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; }
   .logo__svg, .mark-fallback svg { forced-color-adjust: auto; }

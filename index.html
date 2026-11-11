@@ -16,13 +16,14 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#120b13">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#f6f3f7">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/jost-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/nsd-cond-300-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/marck-script.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/site.css">
 <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebSite", "@id": "https://tinoli.ru/#website", "url": "https://tinoli.ru/", "name": "TINOLI", "inLanguage": "ru"}, {"@type": "Organization", "@id": "https://tinoli.ru/#brand", "name": "TINOLI", "url": "https://tinoli.ru/", "logo": "https://tinoli.ru/icon-512.png", "slogan": "There Is No Other Like It", "email": "master@tinoli.ru"}]}</script>
 </head>
@@ -42,24 +43,28 @@
   <section class="hero" aria-labelledby="hero-title">
     <div class="wrap hero__grid">
       <div class="hero__stage" data-hero>
-        <div class="hero__frame">
+        <div class="hero__frame hero__frame--home">
           <div class="hero__vit">
-          <div class="vitrine" role="img" aria-label="Знак TINOLI, вышитый бисером">
-            <span class="shot vitrine__shot vitrine__shot--obj" hidden><img alt="" decoding="async" fetchpriority="high" data-hero-obj></span>
-            <span class="shot vitrine__shot vitrine__shot--worn" hidden><img alt="" decoding="async" data-hero-worn></span>
-            <div class="mark-fallback" aria-hidden="true"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="41.8" cy="15.9" r="3.3"/><circle cx="49.1" cy="23.1" r="3.3"/><circle cx="51.7" cy="33.0" r="3.3"/><circle cx="49.1" cy="42.8" r="3.3"/><circle cx="41.8" cy="50.1" r="3.3"/><circle cx="32.0" cy="52.7" r="3.3"/><circle cx="22.2" cy="50.1" r="3.3"/><circle cx="14.9" cy="42.9" r="3.3"/><circle cx="12.3" cy="33.0" r="3.3"/><circle cx="14.9" cy="23.1" r="3.3"/><circle cx="22.1" cy="15.9" r="3.3"/></g><path fill="#f2edf4" d="M32.0 6.7L37.1 13.3L32.0 19.9L26.9 13.3Z"/></svg></div>
+          <div class="vitrine" role="img" aria-label="Знак TINOLI с буквой T, вышитый бисером">
+            <div class="mark-fallback" aria-hidden="true"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="41.8" cy="15.9" r="3.3"/><circle cx="49.1" cy="23.1" r="3.3"/><circle cx="51.7" cy="33.0" r="3.3"/><circle cx="49.1" cy="42.8" r="3.3"/><circle cx="41.8" cy="50.1" r="3.3"/><circle cx="32.0" cy="52.7" r="3.3"/><circle cx="22.2" cy="50.1" r="3.3"/><circle cx="14.9" cy="42.9" r="3.3"/><circle cx="12.3" cy="33.0" r="3.3"/><circle cx="14.9" cy="23.1" r="3.3"/><circle cx="22.1" cy="15.9" r="3.3"/></g><path fill="#f2edf4" d="M32.0 6.7L37.1 13.3L32.0 19.9L26.9 13.3Z"/><path class="mark__t" fill="currentColor" d="M35.19 26.46 30.8 26.36Q24.09 26.36 24.09 29.31Q24.09 30.07 24.66 30.55Q25.22 31.02 26.36 31.02Q27.49 31.02 29.33 29.98L29.79 30.78Q28.84 31.79 27.65 32.37Q26.45 32.96 25.25 32.96Q24.06 32.96 23.2 32.16Q22.34 31.36 22.34 30.17Q22.34 27.74 24.96 25.93Q27.58 24.13 32.06 24.13Q32.43 24.13 34.7 24.25Q36.97 24.37 38.29 24.37Q39.6 24.37 40.71 23.97Q41.14 23.85 41.23 23.85Q41.66 23.85 41.66 24.4Q41.66 25.2 40.26 25.84Q38.87 26.49 37.06 26.49Q35.04 28.45 33.52 33.34Q32 38.23 29.9 40.79Q27.8 43.35 24.92 43.35Q23.78 43.35 22.77 42.61L23.48 41.45Q23.84 41.63 24.3 41.79L24.73 41.85Q24.89 41.88 25.19 41.88Q26.73 41.88 27.94 40.41Q29.15 38.93 30.48 34.84Q31.82 30.75 32.57 29.41Q33.32 28.08 35.19 26.46Z"/></svg></div>
             <canvas class="embroidery" aria-hidden="true"></canvas>
             <span class="vitrine__shade" aria-hidden="true"></span>
-            <span class="vitrine__glare" aria-hidden="true"></span>
           </div>
           </div>
           <div class="hero__caption">
             <span data-hero-caption><span lang="en">There Is No Other Like It</span></span>
-            <div class="shots" role="group" aria-label="Кадр" hidden>
-              <button type="button" data-shot="obj" aria-pressed="true">Украшение</button>
-              <button type="button" data-shot="worn" aria-pressed="false">Как носится</button>
-            </div>
           </div>
+          <form class="mono mono--home" data-hero-monogram novalidate>
+            <label for="hero-mono-input"><span class="mono__name">Вышить свою монограмму</span><span class="mono__hint">одна или две буквы</span></label>
+            <div class="mono__row">
+              <input class="mono__input" id="hero-mono-input" type="text" placeholder="АБ" autocomplete="off" autocapitalize="characters" spellcheck="false">
+              <button class="btn btn--line" type="submit">Вышить</button>
+            </div>
+            <div class="mono__tools" data-hero-tools hidden>
+              <button class="textbtn" type="button" data-hero-save>Сохранить картинку</button>
+              <button class="textbtn" type="button" data-hero-reset>Вернуть знак</button>
+            </div>
+          </form>
         </div>
       </div>
       <div class="hero__copy">
@@ -67,38 +72,9 @@
         <p class="hero__lead" data-config="home.hero_text">Каждая вещь существует в одном экземпляре. Другой такой нет.</p>
         <p class="hero__note" data-hero-note data-config="home.empty_text" hidden>Первые работы появятся в этой витрине.</p>
         <div class="hero__actions">
-          <a class="btn" href="#works" data-hero-cta data-config="home.hero_button">Смотреть работы</a>
-          <div class="hero__invites">
-            <a class="monolink monolink--portrait" href="/monogram.html#portrait"><span class="monolink__words"><span class="monolink__title">Вышить свой портрет</span><span class="monolink__note">бисером, по вашему фото</span></span></a>
-            <a class="monolink" href="/monogram.html"><span class="monolink__words"><span class="monolink__title">Вышить свою монограмму</span><span class="monolink__note">одна или две буквы</span></span></a>
-          </div>
+          <a class="btn btn--line" href="/monogram.html#portrait">Создать из фото</a>
         </div>
-        <div class="featured" data-featured hidden>
-          <p class="featured__label">Новая работа</p>
-          <h2 class="featured__title display"><a href="#works" data-featured-link></a></h2>
-          <dl class="passport" data-featured-passport></dl>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- The demo portrait: Élisabeth Louise Vigée Le Brun, Madame Grand, 1783,
-       The Metropolitan Museum of Art, New York, Open Access (CC0). -->
-  <section class="section" id="portrait" aria-labelledby="portrait-title">
-    <div class="wrap teaser">
-      <div class="teaser__copy">
-        <h2 class="section__title display" id="portrait-title">Портрет, вышитый бисером</h2>
-        <p class="teaser__lead">Выберите своё фото, и витрина вышьет по нему портрет: жемчуг и золото, бусина за бусиной.</p>
-        <p class="teaser__action"><a class="btn" href="/monogram.html#portrait">Вышить свой портрет</a></p>
-        <p class="note">Фото остаётся на вашем устройстве: сайт его не получает и не хранит.</p>
-      </div>
-      <div class="teaser__stage" data-portrait-demo>
-        <div class="vitrine" role="img" aria-label="Портрет кисти Элизабет Виже-Лебрен, вышитый бисером">
-          <div class="mark-fallback" aria-hidden="true"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g fill="currentColor"><circle cx="41.8" cy="15.9" r="3.3"/><circle cx="49.1" cy="23.1" r="3.3"/><circle cx="51.7" cy="33.0" r="3.3"/><circle cx="49.1" cy="42.8" r="3.3"/><circle cx="41.8" cy="50.1" r="3.3"/><circle cx="32.0" cy="52.7" r="3.3"/><circle cx="22.2" cy="50.1" r="3.3"/><circle cx="14.9" cy="42.9" r="3.3"/><circle cx="12.3" cy="33.0" r="3.3"/><circle cx="14.9" cy="23.1" r="3.3"/><circle cx="22.1" cy="15.9" r="3.3"/></g><path fill="#f2edf4" d="M32.0 6.7L37.1 13.3L32.0 19.9L26.9 13.3Z"/></svg></div>
-          <canvas class="embroidery" aria-hidden="true"></canvas>
-          <span class="vitrine__shade" aria-hidden="true"></span>
-        </div>
-        <p class="teaser__caption" data-demo-caption>Для примера: портрет кисти Элизабет Виже-Лебрен, 1783, Метрополитен-музей.</p>
+        <p class="hero__privacy">Портрет вышивается бисером по вашему фото. Фото остаётся на вашем устройстве: сайт его не получает и не хранит.</p>
       </div>
     </div>
   </section>
@@ -117,13 +93,17 @@
   </section>
 
   <section class="section" id="master" aria-labelledby="master-title">
-    <div class="wrap split">
-      <h2 class="section__title display" id="master-title" data-config="home.master_title">Мастер</h2>
-      <div>
+    <div class="wrap">
+    <div class="room split">
+      <div class="room__head">
+        <h2 class="section__title display" id="master-title" data-config="home.master_title">Мастер</h2>
         <p class="quote" data-config="about.quote">Каждое украшение начинается с вдохновения и заканчивается восхищением</p>
+      </div>
+      <div>
         <div class="prose" data-config-paras="about.text"><p>Я создаю украшения, в которых живёт душа. Каждая бусина подобрана вручную, каждый стежок — осознанный. Мои работы — это не просто аксессуары, это маленькие произведения искусства, которые рассказывают свою историю. Более 10 лет я превращаю бисер, камни и нити в украшения, которые становятся талисманами своих владельцев.</p></div>
         <p class="split__more"><a class="link" href="/about.html">Подробнее о мастере</a></p>
       </div>
+    </div>
     </div>
   </section>
 
@@ -165,7 +145,8 @@
       <a href="/contact.html">Написать</a>
       <a href="/monogram.html">Монограмма</a>
       <a href="/privacy.html">Политика обработки персональных данных</a>
-      <a href="/classic/">Прежняя версия сайта</a>
+      <a href="/night/">Прежняя версия сайта</a>
+      <a href="/classic/">Первая версия сайта</a>
     </nav>
     <div class="ftr__legal">
       <p>Владелец сайта и оператор персональных данных — сведения в <a href="/privacy.html">политике обработки персональных данных</a>; связь: <a href="mailto:master@tinoli.ru">master@tinoli.ru</a></p>
