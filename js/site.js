@@ -879,6 +879,29 @@
     return out;
   }
 
+  // The largest value over a square of the given radius (cells).
+  function boxMax(src, cols, rows, radius) {
+    var tmp = new Float32Array(src.length), out = new Float32Array(src.length);
+    var x, y, k, last, best;
+    for (y = 0; y < rows; y++) {
+      for (x = 0; x < cols; x++) {
+        best = 0;
+        last = Math.min(cols - 1, x + radius);
+        for (k = Math.max(0, x - radius); k <= last; k++) if (src[y * cols + k] > best) best = src[y * cols + k];
+        tmp[y * cols + x] = best;
+      }
+    }
+    for (x = 0; x < cols; x++) {
+      for (y = 0; y < rows; y++) {
+        best = 0;
+        last = Math.min(rows - 1, y + radius);
+        for (k = Math.max(0, y - radius); k <= last; k++) if (tmp[k * cols + x] > best) best = tmp[k * cols + x];
+        out[y * cols + x] = best;
+      }
+    }
+    return out;
+  }
+
   // Tone between the 3rd and 97th percentile of what is in the frame.
   function stretchRange(values) {
     var BINS = 512, hist = new Array(BINS), i, acc = 0, lo = 0, hi = 1;
@@ -901,6 +924,8 @@
   // survive the coarse grid, a stretch of the tones in frame, the light, and a threshold
   // pattern fixed to the grid (error diffusion would shimmer all over while the photo moves).
   var VELVET_CUT = 0.2;    // tones darker than this are left to the velvet
+  var INVERSE_CUT = 0.35;  // with the dark stitched: the lighter part of the photo, left to the velvet
+  var PAPER_FLOOR = 0.3;   // nothing darker than this is taken for the paper of a drawing
 
   // In one colour a cell holds a bead or nothing, and a bead with fewer than two of its six
   // neighbours is taken out. Odd rows sit half a bead to the right: their neighbours in the
@@ -922,8 +947,11 @@
 
   // Where a one-colour portrait is cut in two: a little under the usual tone of the middle
   // of the frame, where the face is, so that the face is beads and its eyes, brows and mouth
-  // are velvet, whatever stands behind it or below it.
-  function middleCut(flat, across, rows) {
+  // are velvet, whatever stands behind it or below it. With the dark stitched the tones come
+  // here turned over, and the cut stands as far above the middle: the face is velvet, and
+  // its eyes, brows and mouth are beads. There it may go lower, down to 0.3: on a drawing
+  // the middle is paper, and its thin lines are grey by the time they reach the grid.
+  function middleCut(flat, across, rows, inverse) {
     var BINS = 64, hist = [], count = 0, i;
     for (i = 0; i < BINS; i++) hist[i] = 0;
     var x0 = Math.floor(across * 0.22), x1 = Math.ceil(across * 0.78);
@@ -934,15 +962,53 @@
         count++;
       }
     }
-    var under = count * 0.35, seen = 0;
+    var under = count * (inverse ? 0.65 : 0.35), seen = 0;
     for (i = 0; i < BINS - 1; i++) {
       seen += hist[i];
       if (seen >= under) break;
     }
-    return clampRange((i + 0.5) / BINS, 0.3, 0.6);
+    return inverse ? clampRange((i + 0.5) / BINS, 0.3, 0.7) : clampRange((i + 0.5) / BINS, 0.3, 0.6);
   }
 
-  function portraitLevels(luma, across, rows, light, one) {
+  function turnedOver(luma) {
+    var out = new Float32Array(luma.length);
+    for (var i = 0; i < luma.length; i++) out[i] = 1 - luma[i];
+    return out;
+  }
+
+  // Every tone against the lightest thing within a third of the frame: the paper of a
+  // drawing, the wall behind a figure. Light that falls unevenly on them, or a shadow across
+  // them, is then no darker than the rest, and with the dark stitched it is not stitched.
+  // The paper changes slowly, so it is looked for on a grid half as fine (an eighth of the work).
+  function againstPaper(luma, across, rows) {
+    var hc = Math.ceil(across / 2), hr = Math.ceil(rows / 2);
+    var mean = new Float32Array(hc * hr), n = new Uint8Array(hc * hr), row, col, i;
+    for (row = 0; row < rows; row++) {
+      for (col = 0; col < across; col++) {
+        i = (row >> 1) * hc + (col >> 1);
+        mean[i] += luma[row * across + col];
+        n[i]++;
+      }
+    }
+    for (i = 0; i < mean.length; i++) mean[i] /= n[i];
+    var reach = Math.max(2, Math.round(across / 6));    // a third of the frame, in the cells of this grid
+    // smoothed first, so that one glint is not taken for the paper; and after, so that it has no steps
+    var white = boxBlur(boxMax(boxBlur(mean, hc, hr, 1), hc, hr, reach), hc, hr, Math.round(reach / 2));
+    var out = new Float32Array(luma.length);
+    for (row = 0; row < rows; row++) {
+      for (col = 0; col < across; col++) {
+        i = row * across + col;
+        out[i] = Math.min(1, luma[i] / Math.max(white[(row >> 1) * hc + (col >> 1)], PAPER_FLOOR));
+      }
+    }
+    return out;
+  }
+
+  // With inverse the beads take the dark of the photo and its light is left to the velvet
+  // («Вышить тёмное»): the tones are turned over first, and the rest works on them as on any
+  // photo, so the slider «Свет» adds beads in both.
+  function portraitLevels(luma, across, rows, light, one, inverse) {
+    if (inverse) luma = turnedOver(againstPaper(luma, across, rows));
     var soft = boxBlur(luma, across, rows, Math.max(2, Math.round(across / 14)));
     var tone = new Float32Array(luma.length), i, boost = one ? 1.1 : 0.6;
     for (i = 0; i < luma.length; i++) tone[i] = clampRange(luma[i] + boost * (luma[i] - soft[i]), 0, 1);
@@ -954,7 +1020,7 @@
       // the cut is found before the light is applied, so the slider «Свет» moves the tones past it
       var flat = new Float32Array(luma.length);
       for (i = 0; i < luma.length; i++) flat[i] = clampRange((tone[i] - range[0]) / (range[1] - range[0]), 0, 1);
-      cut = Math.pow(middleCut(flat, across, rows), 0.85) * 0.75 + 0.125;
+      cut = Math.pow(middleCut(flat, across, rows, inverse), 0.85) * 0.75 + 0.125;
     }
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < across; col++) {
@@ -969,8 +1035,10 @@
         var noise = 52.9829189 * (a - Math.floor(a));
         noise -= Math.floor(noise);
         // Below the cut the velvet stays bare: a scatter of lone beads there reads as
-        // noise, not as shadow. Above it every cell holds a bead.
-        levels[i] = l < VELVET_CUT ? 0 : clampRange(Math.floor(l * 4 + noise), 1, 4);
+        // noise, not as shadow. Above it every cell holds a bead. With the dark stitched
+        // the cut is higher and the four tones are spread over what is above it.
+        var graded = inverse ? (l - INVERSE_CUT) / (1 - INVERSE_CUT) : l;
+        levels[i] = l < (inverse ? INVERSE_CUT : VELVET_CUT) ? 0 : clampRange(Math.floor(graded * 4 + noise), 1, 4);
       }
     }
     return levels;
@@ -998,12 +1066,13 @@
     var rows = Math.max(1, Math.floor(this.h / rowH)), top = (this.h - rows * rowH) / 2;
     var crop = cropRect(source.width, source.height, this.w / this.h, view);
     var luma = samplePortrait(source, crop, across, rows, this.h / rowH, -top / rowH);
-    var levels = portraitLevels(luma, across, rows, view.light, !!view.one);
+    var levels = portraitLevels(luma, across, rows, view.light, !!view.one, !!view.inverse);
     var oneTone = view.beads === 'gold' ? 't3' : 't4';
     var beads = [], hall = hallmarkGeometry(this.w);
-    // the window is emptied first, so that in one colour no bead is left alone at its edge
+    // the window is emptied first, so that no bead is left alone at its edge
     emptyWindow(levels, { across: across, rows: rows, pitch: pitch, rowH: rowH, top: top }, hall);
-    if (view.one) levels = thinLoners(levels, across, rows);
+    // one colour, and the dark stitched in any tones, are pictures of lines: a lone bead is noise there
+    if (view.one || view.inverse) levels = thinLoners(levels, across, rows);
     for (var row = 0; row < rows; row++) {
       for (var col = 0; col < across; col++) {
         var i = row * across + col, level = levels[i];
@@ -2407,6 +2476,8 @@
   var HOLD_SLOP_TOUCH = 8;
   var NUDGE = 0.03;            // a key moves the photo by this part of its free room
   var PHOTO_ERROR = 'Не удалось открыть это фото. Выберите другое.';
+  var NO_BEADS = 'Так бусин не остаётся, вышивать нечего. Портрет оставлен прежним.';
+  var NO_DARK = 'Тёмного на этом фото нет, поэтому вышито светлое.';
 
   function merge(base, changes) {
     var out = {};
@@ -2435,7 +2506,7 @@
   }
 
   function freshView(beads, size) {
-    return { zoom: 1, px: 0.5, py: 0.42, light: 0, size: size, across: 0, beads: beads, one: false };
+    return { zoom: 1, px: 0.5, py: 0.42, light: 0, size: size, across: 0, beads: beads, one: false, inverse: false };
   }
 
   // The chosen file into a canvas of at most PHOTO_SIDE px, the object URL revoked at once.
@@ -2477,7 +2548,11 @@
 
   function caseWidth(m) { return Math.max(120, m.app.canvas.getBoundingClientRect().width); }
 
-  function sayPortrait(m, text) { m.error.textContent = text ? typo(text) : ''; }
+  // The same words are not written again: the status would be read out anew each time.
+  function sayPortrait(m, text) {
+    var say = text ? typo(text) : '';
+    if (m.error.textContent !== say) m.error.textContent = say;
+  }
 
   function syncControls(m) {
     if (!m.photo) return;
@@ -2490,6 +2565,9 @@
     });
     m.toneButtons.forEach(function (b) {
       b.setAttribute('aria-pressed', (b.getAttribute('data-tones') === 'one') === !!m.view.one ? 'true' : 'false');
+    });
+    m.stitchButtons.forEach(function (b) {
+      b.setAttribute('aria-pressed', (b.getAttribute('data-stitch') === 'dark') === !!m.view.inverse ? 'true' : 'false');
     });
   }
 
@@ -2529,7 +2607,8 @@
   }
 
   // Lays the portrait out: stitched when animate, otherwise the finished one at once.
-  function portraitRender(m, animate) {
+  // said: what the page says beside a portrait that was put back (nothing otherwise).
+  function portraitRender(m, animate, said) {
     var app = m.app, run = app.run;
     cancelAnimationFrame(m.frame);
     m.frame = 0;
@@ -2542,10 +2621,30 @@
       m.count = 0;
       ok = beginRun(app, portraitRun(m, !animate));
     }
-    if (!ok) { portraitClear(m); sayPortrait(m, PHOTO_ERROR); return; }
+    if (!ok) { portraitEmpty(m); return; }
+    m.good = m.view;
+    sayPortrait(m, said || '');
     m.lastAt = performance.now();
     m.cost = animate ? 0 : m.lastAt - t0;
     queuePicture(m);
+  }
+
+  // Nothing to stitch. When a change of the controls left no bead (the dark of a photo that
+  // has none, the light turned all the way down), the portrait goes back to what it was
+  // before the change and the page says so. A new photo with nothing dark in it, chosen while
+  // the dark was stitched, is stitched by its light. A photo that gives nothing at all is put away.
+  function portraitEmpty(m) {
+    var back = m.good, said = NO_BEADS;
+    m.good = null;
+    if (!back && m.view.inverse) {
+      back = merge(m.view, { inverse: false });
+      said = NO_DARK;
+    }
+    if (!back) { portraitClear(m); sayPortrait(m, PHOTO_ERROR); return; }
+    m.view = back;
+    syncControls(m);
+    if (m.app.run) m.app.run.stop();    // a new embroidery, so the case leaves its fallback state
+    portraitRender(m, false, said);
   }
 
   // Changes pile up until the next animation frame: one redraw for any number of events.
@@ -2678,8 +2777,10 @@
       sayPortrait(m, '');
       releaseCanvas(m.photo);
       m.photo = work;
-      // a new photo keeps the beads and the tones chosen for the one before
-      m.view = merge(freshView(m.view.beads, m.view.size === null ? startSize(caseWidth(m)) : m.view.size), { one: !!m.view.one });
+      m.good = null;
+      // a new photo keeps the beads, the tones and the side stitched that were chosen for the one before
+      m.view = merge(freshView(m.view.beads, m.view.size === null ? startSize(caseWidth(m)) : m.view.size),
+        { one: !!m.view.one, inverse: !!m.view.inverse });
       if (m.app.mode !== 'portrait') return;
       portraitFrame(m);
       portraitRender(m, true);
@@ -2702,8 +2803,9 @@
     releaseCanvas(m.shown);
     m.photo = null;
     m.picture = null;
+    m.good = null;
     m.count = 0;
-    // back to four tones, with the beads chosen before one colour took their place
+    // back to four tones and the light stitched, with the beads chosen before one colour took their place
     m.view = freshView(m.chosenBeads || m.view.beads, m.view.size);
     m.chosenBeads = null;
     m.input.value = '';
@@ -2784,18 +2886,29 @@
         portraitRender(m, true);
       });
     });
+    // «Вышить светлое» / «Вышить тёмное»: which side of the photo the beads take
+    m.stitchButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var inverse = b.getAttribute('data-stitch') === 'dark';
+        if (!m.photo || inverse === !!m.view.inverse) return;
+        m.view = merge(m.view, { inverse: inverse });
+        syncControls(m);
+        portraitRender(m, true);
+      });
+    });
   }
 
   // The portrait: a photo chosen on the device, laid out in beads, moved and lit in the case.
   function portraitMode(app, panel) {
     var m = {
-      app: app, photo: null, view: freshView('duo', null), picture: null, count: 0,
+      app: app, photo: null, view: freshView('duo', null), good: null, picture: null, count: 0,
       frame: 0, saveTimer: 0, holdTimer: 0, drag: null, peeking: false, sliders: {},
       loadId: 0, cost: 0, lastAt: 0,
       input: panel.querySelector('[data-portrait-file]'), pick: panel.querySelector('[data-portrait-pick]'),
       error: panel.querySelector('[data-portrait-error]'), controls: panel.querySelector('[data-portrait-controls]'),
       beadButtons: [].slice.call(panel.querySelectorAll('[data-beads]')),
       toneButtons: [].slice.call(panel.querySelectorAll('[data-tones]')), chosenBeads: null,
+      stitchButtons: [].slice.call(panel.querySelectorAll('[data-stitch]')),
       shown: el('canvas', { className: 'photoview', 'aria-hidden': 'true' })
     };
     app.stage.insertBefore(m.shown, app.canvas);
@@ -2905,7 +3018,7 @@
   // A portrait stitched from a picture of the site's own, so the tool is one click away. The
   // picture is asked for when the stage comes within 300 px of the screen, the stitching starts
   // when a third of the case is in view. A visitor's photo is never touched here.
-  var DEMO_VIEW = { zoom: 1, px: 0.5, py: 0.5, light: 0, across: 84, beads: 'duo', one: false };
+  var DEMO_VIEW = { zoom: 1, px: 0.5, py: 0.5, light: 0, across: 84, beads: 'duo', one: false, inverse: false };
 
   function initPortraitDemo() {
     var root = document.querySelector('[data-portrait-demo]');

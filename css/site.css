@@ -605,7 +605,7 @@ button { font: inherit; color: inherit; }
 }
 .slider input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--accent); }
 .slider input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.portrait__tones { margin-top: var(--s-2); }
+.portrait__tones, .portrait__stitch { margin-top: var(--s-2); }
 .kinds button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .portrait__hint { margin-top: var(--s-4); max-width: 38ch; font-size: var(--t-meta); line-height: 1.6; color: var(--ink-3); }
 
